@@ -6,7 +6,6 @@ import Card, { CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
-import { LANGUAGES, SUBSCRIPTION_TIERS } from '@/lib/constants';
 import { getInitials } from '@/lib/utils';
 import { useTheme } from '@/components/providers/ThemeProvider';
 import { useGetMeQuery, useUpdateProfileMutation } from '@/store/userApi';
@@ -44,13 +43,6 @@ export default function SettingsPage() {
     firstName: '',
     lastName: '',
   });
-  const [language, setLanguage] = useState('en');
-  const [notifications, setNotifications] = useState({
-    email: true,
-    push: true,
-    reminders: true,
-    marketing: false,
-  });
   const [selectedLevel, setSelectedLevel] = useState(null);
 
   // Initialize form state when user data is available
@@ -59,13 +51,6 @@ export default function SettingsPage() {
       setFormData({
         firstName: user.firstName || '',
         lastName: user.lastName || '',
-      });
-      setLanguage(user.languagePreference || 'en');
-      setNotifications(user.notificationSettings || {
-        email: true,
-        push: true,
-        reminders: true,
-        marketing: false,
       });
       setSelectedLevel(LEVELS.find(l => l.id === user.learnLevel) || null);
     }
@@ -153,8 +138,6 @@ export default function SettingsPage() {
   const tabs = [
     { id: 'profile', label: 'Profile', icon: '👤' },
     { id: 'preferences', label: 'Preferences', icon: '⚙️' },
-    { id: 'subscription', label: 'Subscription', icon: '💎' },
-    { id: 'notifications', label: 'Notifications', icon: '🔔' },
   ];
 
   if (isLoading) {
@@ -324,29 +307,6 @@ export default function SettingsPage() {
             <>
               <Card>
                 <CardHeader>
-                  <CardTitle>Language</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {LANGUAGES.map((lang) => (
-                      <button
-                        key={lang.code}
-                        onClick={() => setLanguage(lang.code)}
-                        className={`p-4 rounded-xl border-2 text-left transition-all ${language === lang.code
-                          ? 'border-primary-500 bg-primary-50 dark:bg-primary-950'
-                          : 'border-[var(--card-border)] hover:border-primary-300'
-                          }`}
-                      >
-                        <span className="text-2xl">{lang.flag}</span>
-                        <p className="font-medium mt-2">{lang.label}</p>
-                      </button>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
                   <CardTitle>Theme</CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -374,108 +334,6 @@ export default function SettingsPage() {
             </>
           )}
 
-          {activeTab === 'subscription' && (
-            <>
-              <Card className="border-primary-500">
-                <CardContent className="py-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-2xl">
-                      💎
-                    </div>
-                    <div className="flex-1">
-                      <Badge variant="primary">Current Plan</Badge>
-                      <h3 className="text-xl font-bold mt-1">Premium</h3>
-                      <p className="text-foreground-secondary text-sm">$9/month</p>
-                    </div>
-                    <Button variant="secondary">Manage</Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <div className="grid md:grid-cols-3 gap-6">
-                {Object.values(SUBSCRIPTION_TIERS).map((tier) => (
-                  <Card
-                    key={tier.id}
-                    className={tier.id === 'premium' ? 'border-primary-500 ring-2 ring-primary-200' : ''}
-                  >
-                    <CardContent className="py-6">
-                      <h3 className="text-xl font-bold">{tier.name}</h3>
-                      <div className="mt-2 mb-4">
-                        <span className="text-3xl font-bold">${tier.price}</span>
-                        {tier.price > 0 && <span className="text-foreground-secondary">/month</span>}
-                      </div>
-                      <ul className="space-y-2 mb-6">
-                        {tier.features.map((feature, i) => (
-                          <li key={i} className="flex items-center gap-2 text-sm">
-                            <span className="text-green-500">✓</span>
-                            {feature}
-                          </li>
-                        ))}
-                      </ul>
-                      <Button
-                        variant={tier.id === 'premium' ? 'primary' : 'secondary'}
-                        className="w-full"
-                      >
-                        {tier.id === 'premium' ? 'Current Plan' : 'Upgrade'}
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </>
-          )}
-
-          {activeTab === 'notifications' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Notification Preferences</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {[
-                  { key: 'email', label: 'Email Notifications', desc: 'Receive updates via email' },
-                  { key: 'push', label: 'Push Notifications', desc: 'Get notified on your device' },
-                  { key: 'reminders', label: 'Study Reminders', desc: 'Daily reminders to practice' },
-                  { key: 'marketing', label: 'Marketing', desc: 'News and promotional offers' },
-                ].map((item) => (
-                  <div key={item.key} className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{item.label}</p>
-                      <p className="text-sm text-foreground-secondary">{item.desc}</p>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        const newSettings = {
-                          ...notifications,
-                          [item.key]: !notifications[item.key],
-                        };
-                        setNotifications(newSettings);
-                        try {
-                          const response = await updateProfile({
-                            notificationSettings: newSettings,
-                          }).unwrap();
-                          if (response.success) {
-                            dispatch(setUser(response.data));
-                          }
-                        } catch (error) {
-                          console.error('Failed to update notifications:', error);
-                          // Revert on error
-                          setNotifications(notifications);
-                        }
-                      }}
-                      disabled={isUpdating}
-                      className={`w-12 h-6 rounded-full transition-colors relative ${notifications[item.key] ? 'bg-primary-500' : 'bg-neutral-300 dark:bg-neutral-600'
-                        } ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      <span
-                        className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${notifications[item.key] ? 'translate-x-7' : 'translate-x-1'
-                          }`}
-                      />
-                    </button>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
     </div>
