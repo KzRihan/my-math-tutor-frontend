@@ -25,8 +25,8 @@ export default function CTA() {
 
           {/* Subheading */}
           <p className="text-lg text-white/70 mb-8 max-w-xl mx-auto">
-            Join thousands of students who are already learning smarter. 
-            Start for free, upgrade anytime.
+            Join thousands of students who are already learning smarter.
+            Start for free today.
           </p>
 
           {/* CTA Buttons */}
@@ -35,15 +35,6 @@ export default function CTA() {
               <Button size="lg" className="w-full sm:w-auto text-base px-8">
                 Get Started Free
                 <span className="ml-2">→</span>
-              </Button>
-            </Link>
-            <Link href="/pricing">
-              <Button 
-                variant="secondary" 
-                size="lg" 
-                className="w-full sm:w-auto text-base px-8 bg-white/10 border-white/20 text-white hover:bg-white/20"
-              >
-                View Pricing
               </Button>
             </Link>
           </div>

@@ -60,9 +60,6 @@ export default function HowItWorks() {
             <span className="gradient-text">Mastery</span>{' '}
             in 4 Steps
           </h2>
-          <p className="text-foreground-secondary">
-            Our AI-powered workflow makes learning mathematics intuitive and effective.
-          </p>
         </div>
 
         {/* Steps */}

@@ -3,7 +3,7 @@ import { APP_NAME, SOCIAL_LINKS } from '@/lib/constants';
 import { FaCalculator, FaInstagram, FaYoutube, FaDiscord, FaHeart } from 'react-icons/fa';
 import { FaXTwitter } from 'react-icons/fa6';
 
-export default function Footer() {
+export default function Footer({ hidePricing = false }) {
   const currentYear = new Date().getFullYear();
 
   const footerLinks = {
@@ -31,6 +31,9 @@ export default function Footer() {
       { label: 'Cookie Policy', href: '#' }
     ]
   };
+  const productLinks = hidePricing
+    ? footerLinks.product.filter((link) => link.label !== 'Pricing')
+    : footerLinks.product;
 
   return (
     <footer className="bg-neutral-900 dark:bg-neutral-950 text-white relative overflow-hidden">
@@ -95,7 +98,7 @@ export default function Footer() {
             <div className="space-y-4">
               <h4 className="font-bold text-lg mb-6">Product</h4>
               <ul className="space-y-3">
-                {footerLinks.product.map((link) => (
+                {productLinks.map((link) => (
                   <li key={link.label}>
                     <Link
                       href={link.href}

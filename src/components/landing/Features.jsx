@@ -51,9 +51,6 @@ export default function Features() {
             Everything You Need to{' '}
             <span className="gradient-text">Excel in Math</span>
           </h2>
-          <p className="text-foreground-secondary">
-            Powered by cutting-edge AI technology, designed by educators, built for students.
-          </p>
         </div>
 
         {/* Features Grid */}
@@ -79,22 +76,6 @@ export default function Features() {
           ))}
         </div>
 
-        {/* Bottom CTA */}
-        <div className="mt-16 text-center">
-          <p className="text-foreground-secondary mb-4">
-            Join thousands of students improving their math skills
-          </p>
-          <div className="flex items-center justify-center gap-2">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 border-2 border-background -ml-3 first:ml-0 flex items-center justify-center text-white text-xs font-bold">
-                {String.fromCharCode(64 + i)}
-              </div>
-            ))}
-            <span className="ml-4 text-sm text-foreground-secondary">
-              +50,000 active learners
-            </span>
-          </div>
-        </div>
       </div>
     </section>
   );

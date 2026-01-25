@@ -184,17 +184,6 @@ export default function RegisterPage() {
           </p>
         </Card>
 
-        {/* Terms */}
-        <p className="text-center text-foreground-secondary text-xs mt-6">
-          By creating an account, you agree to our{' '}
-          <Link href="#" className="text-primary-600 hover:underline">
-            Terms of Service
-          </Link>{' '}
-          and{' '}
-          <Link href="#" className="text-primary-600 hover:underline">
-            Privacy Policy
-          </Link>
-        </p>
       </div>
     </div>
   );

@@ -6,7 +6,7 @@ import Button from '@/components/ui/Button';
 import { APP_NAME } from '@/lib/constants';
 import { FaCalculator } from 'react-icons/fa';
 
-export default function Header() {
+export default function Header({ hidePricing = false }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -50,18 +50,14 @@ export default function Header() {
             >
               How It Works
             </Link>
-            <Link
-              href="/pricing"
-              className="text-sm font-medium text-foreground-secondary hover:text-foreground transition-colors"
-            >
-              Pricing
-            </Link>
-            <Link
-              href="/about"
-              className="text-sm font-medium text-foreground-secondary hover:text-foreground transition-colors"
-            >
-              About
-            </Link>
+            {!hidePricing && (
+              <Link
+                href="/pricing"
+                className="text-sm font-medium text-foreground-secondary hover:text-foreground transition-colors"
+              >
+                Pricing
+              </Link>
+            )}
           </nav>
 
           {/* Desktop Actions */}
@@ -118,20 +114,15 @@ export default function Header() {
               >
                 How It Works
               </Link>
-              <Link
-                href="/pricing"
-                className="text-foreground-secondary hover:text-foreground transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Pricing
-              </Link>
-              <Link
-                href="/about"
-                className="text-foreground-secondary hover:text-foreground transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                About
-              </Link>
+              {!hidePricing && (
+                <Link
+                  href="/pricing"
+                  className="text-foreground-secondary hover:text-foreground transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Pricing
+                </Link>
+              )}
               <div className="flex flex-col gap-2 pt-4 border-t border-[var(--card-border)]">
                 <Link href="/login">
                   <Button variant="secondary" className="w-full">Log In</Button>
