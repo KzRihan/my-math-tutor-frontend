@@ -15,7 +15,7 @@ import { RiLightbulbLine } from "react-icons/ri";
 
 // Backend API Base URL for streaming chat
 const STREAM_API_URL = process.env.NEXT_PUBLIC_STREAM_API_URL || 'http://192.168.0.125:8502';
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
 
 // Dummy hints for now (will be replaced with AI-generated hints later)
 const defaultHints = [
@@ -1164,3 +1164,4 @@ export default function SolvePage() {
     </Suspense>
   );
 }
+

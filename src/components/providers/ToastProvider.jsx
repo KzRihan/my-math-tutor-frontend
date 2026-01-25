@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import { FaCheckCircle, FaTimesCircle, FaExclamationTriangle, FaLightbulb } from 'react-icons/fa';
 
 const ToastContext = createContext(null);
@@ -18,6 +18,10 @@ let toastId = 0;
 export default function ToastProvider({ children }) {
     const [toasts, setToasts] = useState([]);
 
+    const removeToast = useCallback((id) => {
+        setToasts(prev => prev.filter(toast => toast.id !== id));
+    }, []);
+
     const addToast = useCallback((message, type = 'info', duration = 5000) => {
         const id = ++toastId;
         const toast = { id, message, type, duration };
@@ -31,19 +35,24 @@ export default function ToastProvider({ children }) {
         }
 
         return id;
-    }, []);
-
-    const removeToast = useCallback((id) => {
-        setToasts(prev => prev.filter(toast => toast.id !== id));
-    }, []);
+    }, [removeToast]);
 
     const success = useCallback((message, duration) => addToast(message, 'success', duration), [addToast]);
     const error = useCallback((message, duration) => addToast(message, 'error', duration), [addToast]);
     const warning = useCallback((message, duration) => addToast(message, 'warning', duration), [addToast]);
     const info = useCallback((message, duration) => addToast(message, 'info', duration), [addToast]);
 
+    const contextValue = useMemo(() => ({
+        addToast,
+        removeToast,
+        success,
+        error,
+        warning,
+        info,
+    }), [addToast, removeToast, success, error, warning, info]);
+
     return (
-        <ToastContext.Provider value={{ addToast, removeToast, success, error, warning, info }}>
+        <ToastContext.Provider value={contextValue}>
             {children}
             <ToastContainer toasts={toasts} removeToast={removeToast} />
         </ToastContext.Provider>

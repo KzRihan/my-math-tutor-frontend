@@ -7,7 +7,7 @@ import Button from '@/components/ui/Button';
 import MathRenderer from '@/components/chat/MathRenderer';
 
 // Backend API Base URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
 
 export default function CapturePage() {
   const router = useRouter();
@@ -744,3 +744,4 @@ export default function CapturePage() {
     </div>
   );
 }
+

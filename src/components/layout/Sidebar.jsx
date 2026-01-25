@@ -14,7 +14,7 @@ import { useToast } from '@/components/providers/ToastProvider';
 import { useGetMeQuery } from '@/store/userApi';
 import { FaHome, FaBook, FaCamera, FaRobot, FaChartBar, FaCog, FaUser, FaCalculator, FaSun, FaMoon, FaSignOutAlt, FaHourglassHalf } from 'react-icons/fa';
 
-const SERVER_BASE_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:8000';
+const SERVER_BASE_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:8001';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: FaHome },
@@ -248,3 +248,4 @@ export default function Sidebar() {
     </aside>
   );
 }
+

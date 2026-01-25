@@ -22,7 +22,7 @@ const LEVELS = [
     { id: 'college', label: 'College', grades: '11+', icon: '🎓' },
 ];
 
-const SERVER_BASE_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:8000';
+const SERVER_BASE_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:8001';
 
 export default function ProfilePage() {
     const [isEditing, setIsEditing] = useState(false);
@@ -515,3 +515,4 @@ export default function ProfilePage() {
         </div>
     );
 }
+

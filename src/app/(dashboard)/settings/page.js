@@ -20,7 +20,7 @@ const LEVELS = [
   { id: 'college', label: 'College', grades: '11+', icon: '🎓', defaultLevel: 11 },
 ];
 
-const SERVER_BASE_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:8000';
+const SERVER_BASE_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:8001';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile');
@@ -481,3 +481,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+

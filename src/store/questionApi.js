@@ -7,7 +7,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 // Base URL for API
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api/v1';
 
 /**
  * Question API slice
@@ -104,4 +104,5 @@ export const {
   useGetUserHistoryQuery,
   useGetTopicStatsQuery,
 } = questionApi;
+
 

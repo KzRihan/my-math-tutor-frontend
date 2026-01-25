@@ -7,7 +7,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 // Base URL for API - defaults to localhost in development
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api/v1';
 // Backend AI service URL - should be configured via environment variable
 const AI_SERVICE_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://192.168.0.125:8503';
 
@@ -364,4 +364,5 @@ export const {
     useSuspendStudentMutation,
     useActivateStudentMutation,
 } = adminApi;
+
 
