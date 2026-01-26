@@ -8,7 +8,7 @@ import Progress from '@/components/ui/Progress';
  * Progress Page
  * 
  * Displays user's learning progress with real data from backend API.
- * Shows topic mastery, weekly activity, streak, and achievements.
+ * Shows topic mastery, weekly activity, and achievements.
  */
 export default function ProgressPage() {
   const { data: response, isLoading, error } = useGetUserProgressQuery();
@@ -103,7 +103,6 @@ export default function ProgressPage() {
   const achievements = [
     { id: 'ach-1', title: 'First Steps', icon: '🎯', unlocked: stats.totalTopicsCompleted > 0 },
     { id: 'ach-2', title: 'Problem Solver', icon: '🧩', unlocked: stats.problemsSolved >= 100 },
-    { id: 'ach-3', title: 'Week Warrior', icon: '🔥', unlocked: stats.currentStreak >= 7 },
     { id: 'ach-4', title: 'Math Master', icon: '🏆', unlocked: stats.totalTopicsCompleted >= 5 },
     { id: 'ach-5', title: 'Perfect Score', icon: '⭐', unlocked: stats.averageAccuracy >= 0.95 },
     { id: 'ach-6', title: 'Dedicated', icon: '📚', unlocked: stats.totalMinutesLearned >= 600 },
@@ -282,17 +281,7 @@ export default function ProgressPage() {
             </CardContent>
           </Card>
 
-          {/* Streak */}
-          <Card>
-            <CardContent className="py-6 text-center">
-              <div className="text-5xl mb-3">🔥</div>
-              <div className="text-3xl font-bold">{stats.currentStreak || 0} Days</div>
-              <p className="text-foreground-secondary text-sm">Current Streak</p>
-              <p className="text-xs text-foreground-secondary mt-2">
-                Best: {stats.longestStreak || 0} days
-              </p>
-            </CardContent>
-          </Card>
+          
         </div>
       </div>
     </div>

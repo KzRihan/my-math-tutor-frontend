@@ -10,7 +10,6 @@ export const currentUser = {
   languagePreference: "en",
   createdAt: "2024-09-15T10:30:00Z",
   subscriptionTier: "premium",
-  streak: 12,
   totalMinutesLearned: 1250,
   problemsSolved: 347,
   hintsUsed: 89,
@@ -23,8 +22,6 @@ export const userStats = {
   todayProblems: 12,
   weeklyGoal: 120, // minutes
   weeklyProgress: 85, // minutes
-  currentStreak: 12,
-  longestStreak: 28,
   totalTopicsCompleted: 8,
   totalLessonsCompleted: 42,
   averageAccuracy: 0.78,
@@ -51,13 +48,6 @@ export const recentActivity = [
     topicId: "algebra-basics",
     timestamp: "2024-12-19T07:45:00Z",
     xpEarned: 25
-  },
-  {
-    id: "act-3",
-    type: "streak_milestone",
-    title: "🔥 12 Day Streak!",
-    timestamp: "2024-12-19T06:00:00Z",
-    xpEarned: 100
   },
   {
     id: "act-4",
@@ -93,14 +83,6 @@ export const achievements = [
     icon: "🧩",
     unlocked: true,
     unlockedAt: "2024-10-20T14:30:00Z"
-  },
-  {
-    id: "ach-3",
-    title: "Week Warrior",
-    description: "Study for 7 days in a row",
-    icon: "🔥",
-    unlocked: true,
-    unlockedAt: "2024-11-05T09:00:00Z"
   },
   {
     id: "ach-4",

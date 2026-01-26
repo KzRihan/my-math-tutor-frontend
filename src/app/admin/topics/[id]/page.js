@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { topics, lessons, exercises, GRADE_BANDS, DIFFICULTY_LEVELS } from '@/data/admin-data';
@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { 
     useGenerateLessonContentMutation,
     useSaveLessonContentMutation,
+    useSaveLessonsMutation,
     useGetTopicQuery,
     usePublishTopicMutation,
     useUnpublishTopicMutation
@@ -32,11 +33,13 @@ export default function TopicEditorPage() {
     const [generatingLessonId, setGeneratingLessonId] = useState(null);
     // State for customizable content generation settings per lesson
     const [lessonSettings, setLessonSettings] = useState({});
+    const [generateImages, setGenerateImages] = useState(true);
 
     // RTK Query hooks
     const { data: topicResponse, isLoading: isLoadingTopic, error: topicError } = useGetTopicQuery(topicId);
     const [generateLessonContent] = useGenerateLessonContentMutation();
     const [saveLessonContent] = useSaveLessonContentMutation();
+    const [saveLessons, { isLoading: isSavingLessons }] = useSaveLessonsMutation();
     const [publishTopic, { isLoading: isPublishing }] = usePublishTopicMutation();
     const [unpublishTopic, { isLoading: isUnpublishing }] = useUnpublishTopicMutation();
     const toast = useToast();
@@ -44,6 +47,22 @@ export default function TopicEditorPage() {
     // Extract topic data from API response
     const topic = topicResponse?.data || topicResponse;
     const topicLessons = topic?.lessons || [];
+    const topicExercises = useMemo(() => {
+        return topicLessons.flatMap((lesson) => {
+            const lessonId = lesson._id || lesson.id || lesson.title;
+            const exercises = lesson?.content?.practice_exercises || [];
+            return exercises.map((ex, index) => ({
+                id: `${lessonId}-${index}`,
+                lessonTitle: lesson.title,
+                question: ex.question || ex.exercise || 'Practice exercise',
+                answer: ex.answer || ex.solution || '',
+                diagramBase64: ex.diagram_base64 || '',
+                diagramUrl: ex.diagram_url || '',
+                difficulty: topic?.difficulty || 'medium',
+                type: 'practice',
+            }));
+        });
+    }, [topicLessons, topic?.difficulty]);
 
     // Show loading state
     if (isLoadingTopic) {
@@ -81,6 +100,29 @@ export default function TopicEditorPage() {
         return styles[status] || styles.draft;
     };
 
+    const handleAddLesson = async () => {
+        const title = window.prompt('New lesson title');
+        if (!title || !title.trim()) {
+            return;
+        }
+
+        try {
+            await saveLessons({
+                topicId,
+                lessons: [title.trim()],
+            }).unwrap();
+            toast.success('Lesson added successfully');
+        } catch (error) {
+            const errorMsg =
+                error?.data?.error?.message ||
+                error?.data?.message ||
+                error?.message ||
+                'Failed to add lesson';
+            console.error('Add lesson error:', error);
+            toast.error(errorMsg);
+        }
+    };
+
     // Generate content for a specific lesson (INDEPENDENT - doesn't affect other lessons)
     const handleGenerateLessonContent = async (lessonTitle, lessonId, customSettings = {}) => {
         if (!topic || !lessonTitle || !lessonId) {
@@ -104,6 +146,7 @@ export default function TopicEditorPage() {
             // Use custom settings or defaults
             const exercisesCount = customSettings.exercisesCount || 4;
             const quizCount = customSettings.quizCount || 5;
+            const imagesEnabled = customSettings.generateImages ?? generateImages;
 
             // Step 1: Generate lesson content
             setGenerationStep(1);
@@ -114,6 +157,7 @@ export default function TopicEditorPage() {
                 difficultyLevel: topic.difficulty,
                 exercisesCount: exercisesCount,
                 quizCount: quizCount,
+                generateImages: imagesEnabled,
             }).unwrap();
 
             // Step 2: Save lesson content
@@ -461,9 +505,13 @@ export default function TopicEditorPage() {
                             <div className="text-sm text-foreground-secondary">
                                 {topicLessons.length} lessons · Drag to reorder
                             </div>
-                            <button className="btn btn-primary btn-sm">
+                            <button
+                                className="btn btn-primary btn-sm"
+                                onClick={handleAddLesson}
+                                disabled={isSavingLessons}
+                            >
                                 <FaPlus />
-                                Add Lesson
+                                {isSavingLessons ? 'Adding...' : 'Add Lesson'}
                             </button>
                         </div>
 
@@ -587,50 +635,57 @@ export default function TopicEditorPage() {
                         </div>
 
                         <div className="space-y-3">
-                            {(exercises['lesson-002'] || []).map((ex) => (
-                                <div key={ex.id} className="p-4 rounded-xl bg-neutral-50 dark:bg-neutral-800/50 flex items-center gap-4">
-                                    <div className={cn(
-                                        'w-10 h-10 rounded-xl flex items-center justify-center text-lg',
-                                        ex.type === 'mcq' ? 'bg-primary-500/10' :
-                                            ex.type === 'numeric' ? 'bg-secondary-500/10' :
-                                                'bg-warning/10'
-                                    )}>
-                                        {ex.type === 'mcq' ? <FaQuestionCircle /> : ex.type === 'numeric' ? <FaQuestionCircle /> : <FaEdit />}
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="font-medium text-sm">{ex.question}</p>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <span className={cn(
-                                                'text-xs px-2 py-0.5 rounded-full',
-                                                ex.difficulty === 'easy' ? 'bg-success/10 text-success' :
-                                                    ex.difficulty === 'medium' ? 'bg-warning/10 text-warning' :
-                                                        'bg-error/10 text-error'
-                                            )}>
-                                                {ex.difficulty}
-                                            </span>
-                                            <span className={cn(
-                                                'text-xs px-2 py-0.5 rounded-full',
-                                                ex.status === 'approved' ? 'bg-success/10 text-success' : 'bg-neutral-200 dark:bg-neutral-700 text-foreground-secondary'
-                                            )}>
-                                                {ex.status}
-                                            </span>
-                                            <span className="text-xs text-foreground-secondary">{ex.correctRate}% correct rate</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                        <button className="p-2 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors">
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                            </svg>
-                                        </button>
-                                        <button className="p-2 rounded-lg hover:bg-error/10 text-foreground-secondary hover:text-error transition-colors">
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </button>
-                                    </div>
+                            {topicExercises.length === 0 ? (
+                                <div className="text-sm text-foreground-secondary text-center py-6">
+                                    No exercises found yet. Generate lesson content to create exercises.
                                 </div>
-                            ))}
+                            ) : (
+                                topicExercises.map((ex) => (
+                                    <details key={ex.id} className="p-4 rounded-xl bg-neutral-50 dark:bg-neutral-800/50 border border-[var(--card-border)]">
+                                        <summary className="flex items-center gap-4 cursor-pointer list-none">
+                                            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg bg-warning/10">
+                                                <FaEdit />
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="font-medium text-sm line-clamp-1">{ex.question}</p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className={cn(
+                                                        'text-xs px-2 py-0.5 rounded-full',
+                                                        ex.difficulty === 'easy' ? 'bg-success/10 text-success' :
+                                                            ex.difficulty === 'medium' ? 'bg-warning/10 text-warning' :
+                                                                'bg-error/10 text-error'
+                                                    )}>
+                                                        {ex.difficulty}
+                                                    </span>
+                                                    <span className="text-xs text-foreground-secondary">
+                                                        {ex.lessonTitle}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <span className="text-xs text-foreground-secondary">View</span>
+                                        </summary>
+                                        <div className="mt-3 text-sm text-foreground-secondary">
+                                            <p className="text-foreground">{ex.question}</p>
+                                            {ex.answer ? (
+                                                <p className="mt-2"><span className="font-medium text-foreground">Answer:</span> {ex.answer}</p>
+                                            ) : null}
+                                            {ex.diagramUrl ? (
+                                                <img
+                                                    src={ex.diagramUrl}
+                                                    alt="Exercise diagram"
+                                                    className="mt-3 w-full max-w-md rounded-xl border border-[var(--card-border)]"
+                                                />
+                                            ) : ex.diagramBase64 ? (
+                                                <img
+                                                    src={`data:image/png;base64,${ex.diagramBase64}`}
+                                                    alt="Exercise diagram"
+                                                    className="mt-3 w-full max-w-md rounded-xl border border-[var(--card-border)]"
+                                                />
+                                            ) : null}
+                                        </div>
+                                    </details>
+                                ))
+                            )}
                         </div>
                     </div>
                 )}
@@ -743,7 +798,12 @@ export default function TopicEditorPage() {
 
                             <div className="space-y-3 mb-6">
                                 <label className="flex items-center gap-3 cursor-pointer">
-                                    <input type="checkbox" defaultChecked className="w-5 h-5 rounded border-neutral-300" />
+                                    <input
+                                        type="checkbox"
+                                        checked={generateImages}
+                                        onChange={(e) => setGenerateImages(e.target.checked)}
+                                        className="w-5 h-5 rounded border-neutral-300"
+                                    />
                                     <span className="text-sm">Generate images with Stable Diffusion</span>
                                 </label>
                                 <label className="flex items-center gap-3 cursor-pointer">

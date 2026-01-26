@@ -6,9 +6,8 @@ import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import MobileNav from '@/components/layout/MobileNav';
 import LearningLevelModal from '@/components/modals/LearningLevelModal';
-import StreakPopupModal from '@/components/modals/StreakPopupModal';
 import ThemeProvider from '@/components/providers/ThemeProvider';
-import { useGetMeQuery, useGetUserProgressQuery, useMarkStreakPopupDisplayedMutation } from '@/store/userApi';
+import { useGetMeQuery } from '@/store/userApi';
 import { logout } from '@/store/authSlice';
 
 export default function DashboardLayout({ children }) {
@@ -16,74 +15,10 @@ export default function DashboardLayout({ children }) {
     const dispatch = useDispatch();
     const router = useRouter();
     const [authChecked, setAuthChecked] = useState(false);
-    const [showStreakPopup, setShowStreakPopup] = useState(false);
-    const [streakInfo, setStreakInfo] = useState(null);
-
     // Fetch latest user data when on dashboard
-    const { data: userData, isLoading: isUserLoading, error } = useGetMeQuery(undefined, {
+    const { data: userData, error } = useGetMeQuery(undefined, {
         skip: !isAuthenticated
     });
-
-    // Fetch progress data to trigger streak update and popup
-    // This ensures streak is updated and popup can show after login
-    const { data: progressData } = useGetUserProgressQuery(undefined, {
-        skip: !isAuthenticated,
-        // Refetch on mount to ensure streak is updated when user lands on dashboard
-        refetchOnMountOrArgChange: true,
-    });
-
-    // Mutation to mark streak popup as displayed
-    const [markStreakPopupDisplayed] = useMarkStreakPopupDisplayedMutation();
-
-    // Show streak popup when shouldDisplay is true (only once per day)
-    useEffect(() => {
-        // Debug logging
-        if (progressData?.data) {
-            console.log('Dashboard Layout Progress Data:', {
-                streakPopup: progressData.data.streakPopup,
-                streakInfo: progressData.data.streakInfo,
-                shouldDisplay: progressData.data.streakPopup?.shouldDisplay,
-                isDisplayed: progressData.data.streakPopup?.isDisplayed,
-            });
-        }
-
-        if (progressData?.data?.streakPopup?.shouldDisplay && !showStreakPopup) {
-            console.log('Showing streak popup in layout!', progressData.data.streakInfo);
-            setStreakInfo(progressData.data.streakInfo);
-            setShowStreakPopup(true);
-        }
-    }, [progressData, showStreakPopup]);
-
-    // Auto-close popup after 3-5 seconds and mark as displayed
-    useEffect(() => {
-        if (showStreakPopup && streakInfo) {
-            // Random delay between 3-5 seconds (3000-5000ms)
-            const delay = 3000 + Math.random() * 2000;
-            
-            const timer = setTimeout(async () => {
-                // Mark as displayed in backend
-                try {
-                    await markStreakPopupDisplayed().unwrap();
-                } catch (error) {
-                    console.error('Failed to mark streak popup as displayed:', error);
-                }
-                // Close popup
-                setShowStreakPopup(false);
-            }, delay);
-
-            return () => clearTimeout(timer);
-        }
-    }, [showStreakPopup, streakInfo, markStreakPopupDisplayed]);
-
-    // Handle manual close - also mark as displayed
-    const handleCloseStreakPopup = async () => {
-        try {
-            await markStreakPopupDisplayed().unwrap();
-        } catch (error) {
-            console.error('Failed to mark streak popup as displayed:', error);
-        }
-        setShowStreakPopup(false);
-    };
 
     // Check authentication and redirect if not authenticated
     useEffect(() => {
@@ -193,13 +128,6 @@ export default function DashboardLayout({ children }) {
                 {/* Mandatory Learning Level Selection */}
                 <LearningLevelModal isOpen={showLearningLevelModal} user={user} />
 
-                {/* Streak Popup Modal - Shows after login when progress is fetched */}
-                <StreakPopupModal
-                    isOpen={showStreakPopup}
-                    onClose={handleCloseStreakPopup}
-                    previousStreak={streakInfo?.previousStreak || 0}
-                    newStreak={streakInfo?.newStreak || 0}
-                />
             </div>
         </ThemeProvider>
     );

@@ -1,20 +1,98 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { lessons, exercises } from '@/data/admin-data';
 import { cn } from '@/lib/utils';
+import { useGetTopicQuery } from '@/store/adminApi';
 
 export default function LessonEditorPage() {
   const params = useParams();
   const { id: topicId, lessonId } = params;
   const [content, setContent] = useState('');
 
-  // Find the lesson
-  const topicLessons = lessons['topic-001'] || [];
-  const lesson = topicLessons.find(l => l.id === lessonId) || topicLessons[0];
-  const lessonExercises = exercises['lesson-002'] || [];
+  const { data: topicResponse, isLoading, error } = useGetTopicQuery(topicId);
+  const topic = topicResponse?.data || topicResponse;
+  const topicLessons = topic?.lessons || [];
+  const lesson = topicLessons.find((l) => (l._id || l.id) === lessonId);
+
+  const contentFromLesson = useMemo(() => {
+    const lessonContent = lesson?.content;
+    if (!lessonContent) return '';
+    if (typeof lessonContent === 'string') return lessonContent;
+
+    const lines = [];
+    if (lessonContent.title) lines.push(`# ${lessonContent.title}`);
+    if (lessonContent.introduction) {
+      lines.push('', '## Introduction', lessonContent.introduction);
+    }
+    if (lessonContent.explanation) {
+      lines.push('', '## Explanation', lessonContent.explanation);
+    }
+    if (Array.isArray(lessonContent.worked_examples) && lessonContent.worked_examples.length) {
+      lines.push('', '## Worked Examples');
+      lessonContent.worked_examples.forEach((ex, index) => {
+        const title = ex.problem || ex.example || `Example ${index + 1}`;
+        lines.push('', `### ${title}`);
+        const steps = Array.isArray(ex.steps) ? ex.steps : [];
+        if (steps.length) {
+          steps.forEach((step) => lines.push(`- ${step}`));
+        }
+        if (ex.solution) lines.push('', `**Solution:** ${ex.solution}`);
+      });
+    }
+    if (Array.isArray(lessonContent.tips) && lessonContent.tips.length) {
+      lines.push('', '## Tips');
+      lessonContent.tips.forEach((tip) => lines.push(`- ${tip}`));
+    }
+    if (Array.isArray(lessonContent.common_mistakes) && lessonContent.common_mistakes.length) {
+      lines.push('', '## Common Mistakes');
+      lessonContent.common_mistakes.forEach((mistake) => lines.push(`- ${mistake}`));
+    }
+    if (Array.isArray(lessonContent.practice_exercises) && lessonContent.practice_exercises.length) {
+      lines.push('', '## Practice Exercises');
+      lessonContent.practice_exercises.forEach((ex, index) => {
+        const question = ex.question || ex.exercise || `Exercise ${index + 1}`;
+        lines.push(`- ${question}`);
+      });
+    }
+    if (Array.isArray(lessonContent.quiz) && lessonContent.quiz.length) {
+      lines.push('', '## Quiz');
+      lessonContent.quiz.forEach((q, index) => {
+        const question = q.question || `Question ${index + 1}`;
+        lines.push(`- ${question}`);
+      });
+    }
+
+    return lines.join('\n');
+  }, [lesson]);
+
+  useEffect(() => {
+    if (contentFromLesson) {
+      setContent(contentFromLesson);
+    }
+  }, [contentFromLesson]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-foreground-secondary">Loading lesson...</p>
+      </div>
+    );
+  }
+
+  if (error || !lesson) {
+    return (
+      <div className="space-y-6">
+        <div className="glass-card p-6 text-center">
+          <p className="text-error mb-4">Failed to load lesson. Please try again.</p>
+          <Link href={`/admin/topics/${topicId}`} className="btn btn-primary">
+            Back to Topic
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 text-foreground">
@@ -31,7 +109,7 @@ export default function LessonEditorPage() {
           </Link>
           <div>
             <div className="flex items-center gap-2 text-sm text-foreground-secondary mb-1">
-              <span>Algebra Basics</span>
+              <span>{topic?.title || 'Topic'}</span>
               <svg className="w-4 h-4 text-foreground-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
@@ -140,7 +218,7 @@ export default function LessonEditorPage() {
 
             {/* Editor Area */}
             <textarea
-              value={content || lesson?.content || '# Introduction\n\nStart writing your lesson content here...\n\n## Key Concepts\n\n- Concept 1\n- Concept 2\n\n## Example\n\n$$ x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a} $$'}
+              value={content || '# Introduction\n\nStart writing your lesson content here...\n\n## Key Concepts\n\n- Concept 1\n- Concept 2\n\n## Example\n\n$$ x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a} $$'}
               onChange={(e) => setContent(e.target.value)}
               className="w-full min-h-[400px] px-4 py-4 text-sm bg-neutral-100 dark:bg-neutral-800 text-foreground border border-transparent dark:border-neutral-700 rounded-b-xl focus:outline-none focus:border-primary-500 resize-none font-mono placeholder:text-foreground-secondary"
               placeholder="Write your lesson content in Markdown..."
@@ -201,20 +279,14 @@ export default function LessonEditorPage() {
               </button>
             </div>
             <div className="space-y-2">
-              {lessonExercises.slice(0, 3).map((ex, index) => (
-                <div key={ex.id} className="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/50 border border-[var(--card-border)]">
+              {(lesson?.content?.practice_exercises || []).slice(0, 3).map((ex, index) => (
+                <div key={index} className="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/50 border border-[var(--card-border)]">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className={cn(
-                      'text-xs px-2 py-0.5 rounded-full',
-                      ex.difficulty === 'easy' ? 'bg-success/10 text-success' :
-                      ex.difficulty === 'medium' ? 'bg-warning/10 text-warning' :
-                      'bg-error/10 text-error'
-                    )}>
-                      {ex.difficulty}
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-warning/10 text-warning">
+                      practice
                     </span>
-                    <span className="text-xs text-foreground-secondary">{ex.type.toUpperCase()}</span>
                   </div>
-                  <p className="text-sm truncate text-foreground">{ex.question}</p>
+                  <p className="text-sm truncate text-foreground">{ex.question || ex.exercise}</p>
                 </div>
               ))}
             </div>

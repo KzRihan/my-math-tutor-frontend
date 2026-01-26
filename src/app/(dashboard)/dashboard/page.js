@@ -1,80 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import Link from 'next/link';
 import Card, { CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Progress, { CircularProgress } from '@/components/ui/Progress';
 import Badge from '@/components/ui/Badge';
-import StreakPopupModal from '@/components/modals/StreakPopupModal';
-import { useGetUserProgressQuery, useMarkStreakPopupDisplayedMutation } from '@/store/userApi';
-import { useGetTopicStatsQuery } from '@/store/questionApi';
-import { formatRelativeTime, formatDuration } from '@/lib/utils';
+import { useGetUserProgressQuery } from '@/store/userApi';
 import RecentXPActivity from '@/components/practice/RecentXPActivity';
 
 export default function DashboardPage() {
   const { user } = useSelector((state) => state.auth);
-  const [showStreakPopup, setShowStreakPopup] = useState(false);
-  const [streakInfo, setStreakInfo] = useState(null);
-
   // Fetch user progress data
   const { data: progressData, isLoading, error } = useGetUserProgressQuery(undefined, {
     skip: !user,
   });
-
-  // Mutation to mark streak popup as displayed
-  const [markStreakPopupDisplayed] = useMarkStreakPopupDisplayedMutation();
-
-  // Show streak popup when shouldDisplay is true (only once per day)
-  useEffect(() => {
-    // Debug logging
-    if (progressData?.data) {
-      console.log('Dashboard Progress Data:', {
-        streakPopup: progressData.data.streakPopup,
-        streakInfo: progressData.data.streakInfo,
-        shouldDisplay: progressData.data.streakPopup?.shouldDisplay,
-        isDisplayed: progressData.data.streakPopup?.isDisplayed,
-      });
-    }
-
-    if (progressData?.data?.streakPopup?.shouldDisplay && !showStreakPopup) {
-      console.log('Showing streak popup!', progressData.data.streakInfo);
-      setStreakInfo(progressData.data.streakInfo);
-      setShowStreakPopup(true);
-    }
-  }, [progressData, showStreakPopup]);
-
-  // Auto-close popup after 3-5 seconds and mark as displayed
-  useEffect(() => {
-    if (showStreakPopup && streakInfo) {
-      // Random delay between 3-5 seconds (3000-5000ms)
-      const delay = 3000 + Math.random() * 2000;
-      
-      const timer = setTimeout(async () => {
-        // Mark as displayed in backend
-        try {
-          await markStreakPopupDisplayed().unwrap();
-        } catch (error) {
-          console.error('Failed to mark streak popup as displayed:', error);
-        }
-        // Close popup
-        setShowStreakPopup(false);
-      }, delay);
-
-      return () => clearTimeout(timer);
-    }
-  }, [showStreakPopup, streakInfo, markStreakPopupDisplayed]);
-
-  // Handle manual close - also mark as displayed
-  const handleCloseStreakPopup = async () => {
-    try {
-      await markStreakPopupDisplayed().unwrap();
-    } catch (error) {
-      console.error('Failed to mark streak popup as displayed:', error);
-    }
-    setShowStreakPopup(false);
-  };
 
   if (isLoading) {
     return (
@@ -127,14 +67,6 @@ export default function DashboardPage() {
 
   return (
     <div className="p-6 lg:p-8 space-y-8">
-      {/* Streak Popup Modal */}
-      <StreakPopupModal
-        isOpen={showStreakPopup}
-        onClose={handleCloseStreakPopup}
-        previousStreak={streakInfo?.previousStreak || 0}
-        newStreak={streakInfo?.newStreak || 0}
-      />
-
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -142,8 +74,7 @@ export default function DashboardPage() {
             Welcome back, {userData?.firstName || user?.firstName || 'User'}! 👋
           </h1>
           <p className="text-foreground-secondary mt-1">
-            Ready to continue your math journey? You&apos;re on a{' '}
-            <span className="text-primary-500 font-semibold">{stats?.currentStreak || 0} day streak</span>! 🔥
+            Ready to continue your math journey? Let's keep the momentum going!
           </p>
         </div>
         <Link href="/solve">
@@ -155,7 +86,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <Card className="relative overflow-hidden">
           <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-primary-500/20 to-transparent rounded-full -translate-y-1/2 translate-x-1/2" />
           <CardContent>
@@ -185,17 +116,6 @@ export default function DashboardPage() {
             <p className="text-3xl font-bold">{Math.round((stats?.averageAccuracy || 0) * 100)}%</p>
             <p className="text-xs text-foreground-secondary mt-1">
               Top {100 - (stats?.rankPercentile || 85)}% of learners
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-accent-500/20 to-transparent rounded-full -translate-y-1/2 translate-x-1/2" />
-          <CardContent>
-            <p className="text-foreground-secondary text-sm mb-1">Current Streak</p>
-            <p className="text-3xl font-bold">{stats?.currentStreak || 0} 🔥</p>
-            <p className="text-xs text-foreground-secondary mt-1">
-              Best: {stats?.longestStreak || 0} days
             </p>
           </CardContent>
         </Card>

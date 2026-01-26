@@ -211,6 +211,7 @@ export default function NewTopicPage() {
                         difficultyLevel: formData.difficulty,
                         exercisesCount: aiSettings.exercisesPerLesson,
                         quizCount: aiSettings.quizQuestions,
+                        generateImages: aiSettings.generateImages,
                     }).unwrap();
 
                     // Save lesson content

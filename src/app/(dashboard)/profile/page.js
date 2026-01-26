@@ -199,7 +199,7 @@ export default function ProfilePage() {
                                     {/* Overlay on hover */}
                                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                         <span className="text-white text-2xl">📷</span>
-                                    </div>
+                </div>
                                 </button>
                                 <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-green-500 border-4 border-background flex items-center justify-center">
                                     <span className="text-xs">✓</span>
@@ -279,21 +279,7 @@ export default function ProfilePage() {
                         </CardContent>
                     </Card>
 
-                    {/* Streak Card */}
-                    <Card>
-                        <CardContent className="py-6 text-center">
-                            <div className="text-5xl mb-2">🔥</div>
-                            <div className="text-3xl font-bold gradient-text">{user?.currentStreak || 0}</div>
-                            <p className="text-foreground-secondary text-sm">Day Streak</p>
-                            <div className="mt-4 pt-4 border-t border-[var(--card-border)] text-sm">
-                                <div className="flex justify-between text-foreground-secondary">
-                                    <span>Best Streak:</span>
-                                    <span className="font-semibold text-foreground">{user?.longestStreak || 0} days</span>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
+                                    </div>
 
                 {/* Right Column */}
                 <div className="lg:col-span-2 space-y-6">
@@ -483,18 +469,14 @@ export default function ProfilePage() {
                                                 ? 'bg-green-100 dark:bg-green-900/30'
                                                 : activity.type === 'problem_solved'
                                                     ? 'bg-blue-100 dark:bg-blue-900/30'
-                                                    : activity.type === 'streak_milestone'
-                                                        ? 'bg-orange-100 dark:bg-orange-900/30'
-                                                        : 'bg-purple-100 dark:bg-purple-900/30'
+                                                    : 'bg-purple-100 dark:bg-purple-900/30'
                                                 }`}
                                         >
                                             {activity.type === 'lesson_completed'
-                                                ? '✓'
+                                                ? '?'
                                                 : activity.type === 'problem_solved'
-                                                    ? '🧮'
-                                                    : activity.type === 'streak_milestone'
-                                                        ? '🔥'
-                                                        : '🏆'}
+                                                    ? '??'
+                                                    : '??'}
                                         </div>
                                         <div className="flex-1">
                                             <p className="font-medium text-sm">{activity.title}</p>

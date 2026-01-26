@@ -96,17 +96,7 @@ export const userApi = createApi({
       providesTags: ['User', 'UserProgress'],
     }),
 
-    /**
-     * Mark streak popup as displayed
-     * POST /users/me/mark-streak-popup
-     */
-    markStreakPopupDisplayed: builder.mutation({
-      query: () => ({
-        url: '/me/mark-streak-popup',
-        method: 'POST',
-      }),
-      invalidatesTags: ['User', 'UserProgress'],
-    }),
+    
   }),
 });
 
@@ -115,6 +105,5 @@ export const {
   useGetMeQuery,
   useUpdateProfileMutation,
   useGetUserProgressQuery,
-  useMarkStreakPopupDisplayedMutation,
 } = userApi;
 

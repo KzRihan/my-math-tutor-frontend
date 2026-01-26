@@ -68,6 +68,7 @@ export const adminApi = createApi({
                     difficulty_level: data.difficultyLevel,
                     exercises_count: data.exercisesCount,
                     quiz_count: data.quizCount,
+                    generate_images: data.generateImages,
                 },
             }),
             invalidatesTags: ['Lesson'],
