@@ -21,10 +21,27 @@ export default function CapturePage() {
   const [copied, setCopied] = useState(false);
   const [jobId, setJobId] = useState(null);
   const [pollingStatus, setPollingStatus] = useState('');
+  const [showCamera, setShowCamera] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+  const [isCameraReady, setIsCameraReady] = useState(false);
 
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
   const pollingIntervalRef = useRef(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
+  const hiddenInputStyle = {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    padding: 0,
+    margin: -1,
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap',
+    border: 0,
+  };
 
   // Helper function to normalize OCR result and ensure blocks are always present
   const normalizeOcrResult = (result) => {
@@ -84,6 +101,281 @@ export default function CapturePage() {
     if (progress <= 80) return '🔄 Transforming data...';
     if (progress <= 90) return '📝 Finalizing results...';
     return '✨ Almost done!';
+  };
+
+  const loadImageFromFile = (file) => new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = (error) => {
+      URL.revokeObjectURL(url);
+      reject(error);
+    };
+    image.src = url;
+  });
+
+  const toGrayscale = (data) => {
+    const gray = new Uint8ClampedArray(data.length / 4);
+    for (let i = 0, j = 0; i < data.length; i += 4, j += 1) {
+      gray[j] = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+    }
+    return gray;
+  };
+
+  const computeHistogram = (gray) => {
+    const hist = new Array(256).fill(0);
+    for (let i = 0; i < gray.length; i += 1) {
+      hist[gray[i]] += 1;
+    }
+    return hist;
+  };
+
+  const computeOtsuThreshold = (gray) => {
+    const hist = computeHistogram(gray);
+    const total = gray.length;
+    let sum = 0;
+    for (let i = 0; i < 256; i += 1) {
+      sum += i * hist[i];
+    }
+
+    let sumB = 0;
+    let wB = 0;
+    let wF = 0;
+    let varMax = 0;
+    let threshold = 128;
+
+    for (let i = 0; i < 256; i += 1) {
+      wB += hist[i];
+      if (!wB) continue;
+      wF = total - wB;
+      if (!wF) break;
+      sumB += i * hist[i];
+      const mB = sumB / wB;
+      const mF = (sum - sumB) / wF;
+      const varBetween = wB * wF * (mB - mF) * (mB - mF);
+      if (varBetween > varMax) {
+        varMax = varBetween;
+        threshold = i;
+      }
+    }
+
+    return threshold;
+  };
+
+  const findPercentileBounds = (gray, lowPct = 0.02, highPct = 0.98) => {
+    const hist = computeHistogram(gray);
+    const total = gray.length;
+    const lowTarget = total * lowPct;
+    const highTarget = total * highPct;
+    let cumulative = 0;
+    let min = 0;
+    let max = 255;
+
+    for (let i = 0; i < 256; i += 1) {
+      cumulative += hist[i];
+      if (cumulative >= lowTarget) {
+        min = i;
+        break;
+      }
+    }
+
+    cumulative = 0;
+    for (let i = 255; i >= 0; i -= 1) {
+      cumulative += hist[i];
+      if (cumulative >= total - highTarget) {
+        max = i;
+        break;
+      }
+    }
+
+    if (max <= min) {
+      min = 0;
+      max = 255;
+    }
+
+    return { min, max };
+  };
+
+  const estimateSkewAngle = (gray, width, height, threshold) => {
+    let sumX = 0;
+    let sumY = 0;
+    let count = 0;
+    const step = 3;
+
+    for (let y = 0; y < height; y += step) {
+      const rowOffset = y * width;
+      for (let x = 0; x < width; x += step) {
+        if (gray[rowOffset + x] < threshold) {
+          sumX += x;
+          sumY += y;
+          count += 1;
+        }
+      }
+    }
+
+    if (count < 50) return 0;
+
+    const meanX = sumX / count;
+    const meanY = sumY / count;
+    let covXX = 0;
+    let covYY = 0;
+    let covXY = 0;
+
+    for (let y = 0; y < height; y += step) {
+      const rowOffset = y * width;
+      for (let x = 0; x < width; x += step) {
+        if (gray[rowOffset + x] < threshold) {
+          const dx = x - meanX;
+          const dy = y - meanY;
+          covXX += dx * dx;
+          covYY += dy * dy;
+          covXY += dx * dy;
+        }
+      }
+    }
+
+    const angle = 0.5 * Math.atan2(2 * covXY, covXX - covYY);
+    const deg = (angle * 180) / Math.PI;
+    if (Math.abs(deg) < 0.5 || Math.abs(deg) > 25) {
+      return 0;
+    }
+    return deg;
+  };
+
+  const rotateCanvas = (canvas, angleDeg) => {
+    const angle = (angleDeg * Math.PI) / 180;
+    const { width, height } = canvas;
+    const sin = Math.abs(Math.sin(angle));
+    const cos = Math.abs(Math.cos(angle));
+    const newWidth = Math.ceil(width * cos + height * sin);
+    const newHeight = Math.ceil(width * sin + height * cos);
+    const rotated = document.createElement('canvas');
+    rotated.width = newWidth;
+    rotated.height = newHeight;
+    const ctx = rotated.getContext('2d');
+    ctx.translate(newWidth / 2, newHeight / 2);
+    ctx.rotate(angle);
+    ctx.drawImage(canvas, -width / 2, -height / 2);
+    return rotated;
+  };
+
+  const findBoundingBox = (gray, width, height, threshold) => {
+    let minX = width;
+    let minY = height;
+    let maxX = 0;
+    let maxY = 0;
+    let found = false;
+
+    for (let y = 0; y < height; y += 1) {
+      const rowOffset = y * width;
+      for (let x = 0; x < width; x += 1) {
+        if (gray[rowOffset + x] < threshold) {
+          found = true;
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+
+    if (!found) {
+      return { x: 0, y: 0, width, height };
+    }
+
+    const padding = Math.round(Math.max(width, height) * 0.02);
+    const x = Math.max(minX - padding, 0);
+    const y = Math.max(minY - padding, 0);
+    const w = Math.min(maxX + padding, width) - x + 1;
+    const h = Math.min(maxY + padding, height) - y + 1;
+    return { x, y, width: w, height: h };
+  };
+
+  const preprocessImage = async (file) => {
+    const image = await loadImageFromFile(file);
+    const maxDim = 1600;
+    const scale = Math.min(1, maxDim / Math.max(image.width, image.height));
+    const targetWidth = Math.round(image.width * scale);
+    const targetHeight = Math.round(image.height * scale);
+
+    const baseCanvas = document.createElement('canvas');
+    baseCanvas.width = targetWidth;
+    baseCanvas.height = targetHeight;
+    const baseCtx = baseCanvas.getContext('2d', { willReadFrequently: true });
+    baseCtx.drawImage(image, 0, 0, targetWidth, targetHeight);
+
+    const baseData = baseCtx.getImageData(0, 0, targetWidth, targetHeight);
+    const baseGray = toGrayscale(baseData.data);
+    const baseThreshold = computeOtsuThreshold(baseGray);
+    const angle = estimateSkewAngle(baseGray, targetWidth, targetHeight, baseThreshold);
+    const rotatedCanvas = angle ? rotateCanvas(baseCanvas, -angle) : baseCanvas;
+
+    const rotatedCtx = rotatedCanvas.getContext('2d', { willReadFrequently: true });
+    const rotatedData = rotatedCtx.getImageData(0, 0, rotatedCanvas.width, rotatedCanvas.height);
+    const rotatedGray = toGrayscale(rotatedData.data);
+    const rotatedThreshold = computeOtsuThreshold(rotatedGray);
+    const bbox = findBoundingBox(rotatedGray, rotatedCanvas.width, rotatedCanvas.height, rotatedThreshold);
+
+    const cropCanvas = document.createElement('canvas');
+    cropCanvas.width = bbox.width;
+    cropCanvas.height = bbox.height;
+    const cropCtx = cropCanvas.getContext('2d', { willReadFrequently: true });
+    cropCtx.drawImage(
+      rotatedCanvas,
+      bbox.x,
+      bbox.y,
+      bbox.width,
+      bbox.height,
+      0,
+      0,
+      bbox.width,
+      bbox.height
+    );
+
+    const cropData = cropCtx.getImageData(0, 0, bbox.width, bbox.height);
+    const cropGray = toGrayscale(cropData.data);
+    const { min, max } = findPercentileBounds(cropGray);
+    const range = max - min || 1;
+    for (let i = 0, j = 0; i < cropData.data.length; i += 4, j += 1) {
+      let v = (cropGray[j] - min) / range;
+      v = Math.max(0, Math.min(1, v));
+      const value = Math.round(v * 255);
+      cropData.data[i] = value;
+      cropData.data[i + 1] = value;
+      cropData.data[i + 2] = value;
+    }
+
+    const enhancedGray = toGrayscale(cropData.data);
+    const enhancedThreshold = computeOtsuThreshold(enhancedGray);
+    for (let i = 0, j = 0; i < cropData.data.length; i += 4, j += 1) {
+      const value = enhancedGray[j] < enhancedThreshold ? 0 : 255;
+      cropData.data[i] = value;
+      cropData.data[i + 1] = value;
+      cropData.data[i + 2] = value;
+    }
+
+    cropCtx.putImageData(cropData, 0, 0);
+
+    const blob = await new Promise((resolve) => {
+      cropCanvas.toBlob(
+        (result) => resolve(result),
+        'image/jpeg',
+        0.9
+      );
+    });
+
+    if (!blob) {
+      return { processedFile: file, previewUrl: null };
+    }
+
+    const processedFile = new File([blob], `processed_${file.name.replace(/\s+/g, '_')}`, {
+      type: 'image/jpeg',
+    });
+
+    return { processedFile, previewUrl: cropCanvas.toDataURL('image/jpeg', 0.9) };
   };
 
   // Poll for job status
@@ -156,8 +448,61 @@ export default function CapturePage() {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
       }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
     };
   }, []);
+
+  useEffect(() => {
+    if (!showCamera) {
+      setIsCameraReady(false);
+      return;
+    }
+
+    let isActive = true;
+
+    const startCamera = async () => {
+      try {
+        if (!navigator?.mediaDevices?.getUserMedia) {
+          setCameraError('Camera not supported in this browser.');
+          return;
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' },
+          audio: false,
+        });
+
+        if (!isActive) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+          setIsCameraReady(true);
+        }
+      } catch (error) {
+        console.error('Camera error:', error);
+        setCameraError('Unable to access the camera. Check permissions and try again.');
+      }
+    };
+
+    startCamera();
+
+    return () => {
+      isActive = false;
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+      setIsCameraReady(false);
+    };
+  }, [showCamera]);
 
   // Process file and call OCR API
   const processFile = async (file) => {
@@ -178,15 +523,29 @@ export default function CapturePage() {
       return;
     }
 
-    setSelectedFile(file);
     setErrorMessage('');
     setJobId(null);
     setPollingStatus('');
 
-    // Create image preview
-    const reader = new FileReader();
-    reader.onload = (e) => setImagePreview(e.target.result);
-    reader.readAsDataURL(file);
+    let processedFile = file;
+    let previewUrl = null;
+    try {
+      const result = await preprocessImage(file);
+      processedFile = result.processedFile || file;
+      previewUrl = result.previewUrl || null;
+    } catch (error) {
+      console.warn('Image preprocessing failed, using original file.', error);
+    }
+
+    setSelectedFile(processedFile);
+
+    if (previewUrl) {
+      setImagePreview(previewUrl);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (e) => setImagePreview(e.target.result);
+      reader.readAsDataURL(file);
+    }
 
     // Start upload state
     setUploadState('uploading');
@@ -206,14 +565,14 @@ export default function CapturePage() {
 
       // Create FormData for API call
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', processedFile);
       formData.append('strategy', 'pix2tex_only');
       formData.append('language', 'en');
 
       console.log('📤 Uploading to backend...', {
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type,
+        fileName: processedFile.name,
+        fileSize: processedFile.size,
+        fileType: processedFile.type,
       });
 
       // Call backend OCR capture API
@@ -310,6 +669,10 @@ export default function CapturePage() {
 
   // Handle take photo button
   const handleTakePhoto = () => {
+    if (navigator?.mediaDevices?.getUserMedia) {
+      handleUseCamera();
+      return;
+    }
     cameraInputRef.current?.click();
   };
 
@@ -342,6 +705,10 @@ export default function CapturePage() {
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
     }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
     setUploadState('idle');
     setOcrResult(null);
     setProgress(0);
@@ -350,9 +717,54 @@ export default function CapturePage() {
     setErrorMessage('');
     setJobId(null);
     setPollingStatus('');
-    setIsSaving(false);
+    setShowCamera(false);
+    setCameraError('');
+    setIsCameraReady(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (cameraInputRef.current) cameraInputRef.current.value = '';
+  };
+
+  const handleUseCamera = () => {
+    setCameraError('');
+    setIsCameraReady(false);
+    setShowCamera(true);
+  };
+
+  const handleCapturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const width = video.videoWidth || 1280;
+    const height = video.videoHeight || 720;
+
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      setCameraError('Failed to capture photo.');
+      return;
+    }
+
+    ctx.drawImage(video, 0, 0, width, height);
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          setCameraError('Failed to capture photo.');
+          return;
+        }
+
+        const file = new File([blob], `camera_${Date.now()}.jpg`, { type: 'image/jpeg' });
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => track.stop());
+          streamRef.current = null;
+        }
+        setShowCamera(false);
+        processFile(file);
+      },
+      'image/jpeg',
+      0.9
+    );
   };
 
   return (
@@ -363,7 +775,7 @@ export default function CapturePage() {
         ref={fileInputRef}
         onChange={handleFileChange}
         accept="image/jpeg,image/png,image/heic,image/heif,image/webp"
-        className="hidden"
+        style={hiddenInputStyle}
       />
       <input
         type="file"
@@ -371,8 +783,61 @@ export default function CapturePage() {
         onChange={handleFileChange}
         accept="image/*"
         capture="environment"
-        className="hidden"
+        style={hiddenInputStyle}
       />
+
+      {showCamera && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-2xl rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4 shadow-xl">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold">Use Camera</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCamera(false);
+                  setCameraError('');
+                }}
+                className="text-sm text-foreground-secondary hover:text-foreground"
+              >
+                Close
+              </button>
+            </div>
+
+            {cameraError && (
+              <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-900/50 dark:bg-red-950/40">
+                {cameraError}
+              </div>
+            )}
+
+            <div className="relative aspect-video overflow-hidden rounded-lg bg-black">
+              <video ref={videoRef} className="h-full w-full object-cover" playsInline muted />
+              {!isCameraReady && !cameraError && (
+                <div className="absolute inset-0 flex items-center justify-center text-sm text-white/80">
+                  Starting camera…
+                </div>
+              )}
+            </div>
+
+            <canvas ref={canvasRef} style={hiddenInputStyle} />
+
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowCamera(false);
+                  setCameraError('');
+                  cameraInputRef.current?.click();
+                }}
+              >
+                Use File Picker
+              </Button>
+              <Button onClick={handleCapturePhoto} disabled={!isCameraReady}>
+                Capture Photo
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div>
