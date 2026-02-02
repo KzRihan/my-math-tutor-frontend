@@ -418,7 +418,8 @@ export default function TopicDetailPage() {
                             {[...lessons]
                                 .sort((a, b) => (a.order || 0) - (b.order || 0))
                                 .map((lesson, index) => {
-                                    const hasContent = lesson.content && Object.keys(lesson.content).length > 0;
+                                    const lessonContent = lesson?.content?.lesson || lesson?.content || null;
+                                    const hasContent = lessonContent && Object.keys(lessonContent).length > 0;
                                     const lessonId = lesson._id?.toString() || lesson.id?.toString();
                                     
                                     // Get lesson progress from enrollment
@@ -575,10 +576,10 @@ export default function TopicDetailPage() {
                                         label="Exercises per lesson"
                                         type="number"
                                         min={1}
-                                        max={10}
+                                        max={5}
                                         value={contentSettings.exercisesCount}
                                         onChange={(event) => {
-                                            const value = clampNumber(event.target.value, 1, 10);
+                                            const value = clampNumber(event.target.value, 1, 5);
                                             setContentSettings((prev) => ({ ...prev, exercisesCount: value }));
                                         }}
                                     />
@@ -609,7 +610,7 @@ export default function TopicDetailPage() {
                                     </div>
                                 </div>
                                 <p className="text-xs text-foreground-secondary mt-4">
-                                    Limits: 1-10 exercises, 1-5 quiz questions per lesson.
+                                    Limits: 1-5 exercises, 1-5 quiz questions per lesson.
                                 </p>
                             </CardContent>
                         </Card>

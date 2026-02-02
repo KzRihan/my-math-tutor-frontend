@@ -272,11 +272,11 @@ export default function GenerateContentPage() {
               label="Exercises per lesson"
               type="number"
               min={1}
-              max={10}
+              max={5}
               value={formData.exercisesCount}
               onChange={(event) => setFormData((prev) => ({
                 ...prev,
-                exercisesCount: clampNumber(event.target.value, 1, 10),
+                exercisesCount: clampNumber(event.target.value, 1, 5),
               }))}
             />
             <Input

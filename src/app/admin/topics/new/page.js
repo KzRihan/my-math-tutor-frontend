@@ -732,18 +732,18 @@ export default function NewTopicPage() {
                                     value={aiSettings.exercisesPerLesson}
                                     onChange={(e) => {
                                         const value = parseInt(e.target.value) || 1;
-                                        const clampedValue = Math.min(Math.max(value, 1), 10);
+                                        const clampedValue = Math.min(Math.max(value, 1), 5);
                                         setAiSettings(prev => ({ ...prev, exercisesPerLesson: clampedValue }));
                                     }}
                                     min={1}
-                                    max={10}
+                                    max={5}
                                     className="w-full px-4 py-2.5 text-sm text-foreground border border-neutral-200 dark:border-transparent rounded-xl focus:outline-none focus:border-primary-500 transition-all"
                                     style={{ 
                                         backgroundColor: 'var(--search-bg)',
                                         color: 'var(--foreground)'
                                     }}
                                 />
-                                <p className="text-xs text-foreground-secondary mt-1">1-10 exercises</p>
+                                <p className="text-xs text-foreground-secondary mt-1">1-5 exercises (AI service limit)</p>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-foreground mb-2">Quiz Questions</label>

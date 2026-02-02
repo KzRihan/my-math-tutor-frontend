@@ -73,7 +73,7 @@ export default function LessonPage() {
         (l.order?.toString() === params.lessonId)
     );
     const currentLesson = currentLessonIndex >= 0 ? sortedLessons[currentLessonIndex] : null;
-    const lessonContent = currentLesson?.content || null;
+    const lessonContent = currentLesson?.content?.lesson || currentLesson?.content || null;
 
     const prevLesson = currentLessonIndex > 0 ? sortedLessons[currentLessonIndex - 1] : null;
     const nextLesson = currentLessonIndex < sortedLessons.length - 1 ? sortedLessons[currentLessonIndex + 1] : null;
@@ -640,7 +640,9 @@ export default function LessonPage() {
                                                         {index + 1}
                                                     </div>
                                                     <div className="flex-1">
-                                                        <h4 className="font-bold mb-2 text-lg text-neutral-900 dark:text-neutral-100">{example.example}</h4>
+                                                        <h4 className="font-bold mb-2 text-lg text-neutral-900 dark:text-neutral-100">
+                                                            {example.example || example.problem || example.title || ''}
+                                                        </h4>
                                                         {example.steps && example.steps.length > 0 && (
                                                             <ol className="list-decimal list-inside space-y-2 text-neutral-700 dark:text-neutral-300 ml-2">
                                                                 {example.steps.map((step, stepIndex) => (
