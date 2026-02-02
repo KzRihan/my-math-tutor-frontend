@@ -14,6 +14,8 @@ import {
     useUpdateLessonProgressMutation
 } from '@/store/enrollmentApi';
 import { 
+    useGenerateLessonsMutation,
+    useSaveLessonsMutation,
     useGenerateLessonContentMutation,
     useSaveLessonContentMutation
 } from '@/store/adminApi';
@@ -51,6 +53,8 @@ export default function TopicDetailPage() {
         generateImages: true,
     });
     const [generatingLessonId, setGeneratingLessonId] = useState(null);
+    const [newLessonsCount, setNewLessonsCount] = useState(3);
+    const [isGeneratingLessons, setIsGeneratingLessons] = useState(false);
     
     const { data: topicData, isLoading: isLoadingTopic, error: topicError, refetch: refetchTopic } = useGetPublishedTopicQuery(params.id);
     const { data: allTopicsData } = useGetPublishedTopicsQuery({ limit: 1000 });
@@ -59,6 +63,8 @@ export default function TopicDetailPage() {
     });
     const { data: userData } = useGetMeQuery();
     const [enrollInTopic, { isLoading: isEnrolling }] = useEnrollInTopicMutation();
+    const [generateLessons] = useGenerateLessonsMutation();
+    const [saveLessons] = useSaveLessonsMutation();
     const [generateLessonContent] = useGenerateLessonContentMutation();
     const [saveLessonContent] = useSaveLessonContentMutation();
     
@@ -129,6 +135,64 @@ export default function TopicDetailPage() {
             toast.error(errorMessage);
         } finally {
             setGeneratingLessonId(null);
+        }
+    };
+
+    const handleGenerateLessons = async () => {
+        if (!topic) {
+            toast.error('Topic data is not available. Please try again.');
+            return;
+        }
+
+        const topicId = topic.id || topic._id;
+        if (!topicId) {
+            toast.error('Missing topic ID. Please refresh and try again.');
+            return;
+        }
+
+        try {
+            setIsGeneratingLessons(true);
+            const lessonsResult = await generateLessons({
+                topicTitle: topic.title,
+                grade: topic.gradeBand,
+                difficultyLevel: topic.difficulty,
+                numberOfLessons: newLessonsCount,
+            }).unwrap();
+
+            const lessonsArray = lessonsResult?.data?.lessons || lessonsResult?.lessons || [];
+            if (!lessonsArray.length) {
+                throw new Error('No lessons were generated.');
+            }
+
+            const existingTitles = new Set(
+                (topic.lessons || []).map((lesson) => (lesson.title || '').trim().toLowerCase())
+            );
+            const uniqueLessons = lessonsArray.filter((title) => {
+                const normalized = (title || '').trim().toLowerCase();
+                return normalized && !existingTitles.has(normalized);
+            });
+
+            if (!uniqueLessons.length) {
+                toast.info('All generated lessons already exist in this topic.');
+                return;
+            }
+
+            await saveLessons({
+                topicId,
+                lessons: uniqueLessons,
+            }).unwrap();
+
+            toast.success(`Added ${uniqueLessons.length} new lesson(s).`);
+            refetchTopic();
+        } catch (error) {
+            const errorMessage = error?.data?.error?.message
+                || error?.data?.message
+                || error?.error
+                || error?.message
+                || 'Failed to generate lessons. Please try again.';
+            toast.error(errorMessage);
+        } finally {
+            setIsGeneratingLessons(false);
         }
     };
 
@@ -563,6 +627,41 @@ export default function TopicDetailPage() {
 
                 {activeTab === 'generate' && (
                     <div className="space-y-6">
+                        <Card variant="glass" className="p-6">
+                            <CardHeader className="p-0 mb-4">
+                                <CardTitle className="flex items-center gap-2">
+                                    <FaRobot />
+                                    Add Lessons
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 items-end">
+                                    <Input
+                                        label="Number of lessons"
+                                        type="number"
+                                        min={1}
+                                        max={5}
+                                        value={newLessonsCount}
+                                        onChange={(event) => {
+                                            const value = clampNumber(event.target.value, 1, 5);
+                                            setNewLessonsCount(value);
+                                        }}
+                                    />
+                                    <Button
+                                        className="font-bold sm:mt-6"
+                                        onClick={handleGenerateLessons}
+                                        loading={isGeneratingLessons}
+                                        disabled={isGeneratingLessons}
+                                    >
+                                        {isGeneratingLessons ? 'Generating...' : 'Generate Lesson Titles'}
+                                    </Button>
+                                </div>
+                                <p className="text-xs text-foreground-secondary mt-4">
+                                    This will add new lessons to the topic. Generate content for each lesson below.
+                                </p>
+                            </CardContent>
+                        </Card>
+
                         <Card variant="glass" className="p-6">
                             <CardHeader className="p-0 mb-4">
                                 <CardTitle className="flex items-center gap-2">
