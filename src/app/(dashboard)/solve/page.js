@@ -46,9 +46,15 @@ function SolvePageContent() {
   const [gradeLevel, setGradeLevel] = useState('primary'); // Default grade level
   const messagesEndRef = useRef(null);
   const controllerRef = useRef(null); // For aborting streaming requests
+  const messageIdRef = useRef(0);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const createMessageId = () => {
+    messageIdRef.current += 1;
+    return `msg-${Date.now()}-${messageIdRef.current}`;
   };
 
   // Get auth headers
@@ -221,7 +227,7 @@ function SolvePageContent() {
 
         // Create assistant message ID but don't create placeholder yet
         // We'll create it when we receive the first chunk of data
-        const assistantMessageId = `msg-${Date.now()}`;
+        const assistantMessageId = createMessageId();
         let messageCreated = false;
 
         const requestBody = {
@@ -436,7 +442,7 @@ function SolvePageContent() {
 
     // Add user message
     const userMessage = {
-      id: `msg-${Date.now()}`,
+      id: createMessageId(),
       role: 'student',
       message: messageText,
       timestamp: new Date().toISOString()
@@ -448,7 +454,7 @@ function SolvePageContent() {
 
     // Create assistant message ID but don't create placeholder yet
     // We'll create it when we receive the first chunk of data
-    const assistantMessageId = `msg-${Date.now() + 1}`;
+    const assistantMessageId = createMessageId();
     let messageCreated = false;
 
     // Create abort controller for this request
@@ -620,7 +626,7 @@ function SolvePageContent() {
       setMessages(prev => {
         const filtered = prev.filter(msg => msg.id !== assistantMessageId);
         return [...filtered, {
-          id: `msg-${Date.now() + 2}`,
+          id: createMessageId(),
           role: 'teacher',
           message: `Sorry, I encountered an error: ${error.message}. Please try again.`,
           type: 'error',

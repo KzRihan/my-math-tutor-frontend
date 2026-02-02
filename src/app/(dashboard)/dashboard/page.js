@@ -38,6 +38,18 @@ export default function DashboardPage() {
   }
 
   const { user: userData, stats, enrollments, weeklyStudyData } = progressData.data;
+  const getFirstName = (profile) => {
+    if (!profile) return null;
+    const rawName = profile.firstName ||
+      profile.first_name ||
+      profile.givenName ||
+      profile.fullName ||
+      profile.full_name ||
+      profile.name;
+    if (!rawName || typeof rawName !== 'string') return null;
+    return rawName.trim().split(/\s+/)[0];
+  };
+  const displayFirstName = getFirstName(userData) || getFirstName(user) || 'User';
 
   // Get recommended topics (active enrollments that are in progress)
   // If no active in-progress topics, show recently accessed active topics
@@ -71,7 +83,7 @@ export default function DashboardPage() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl lg:text-3xl font-display font-bold">
-            Welcome back, {userData?.firstName || user?.firstName || 'User'}! 👋
+            Welcome back, {displayFirstName}! 👋
           </h1>
           <p className="text-foreground-secondary mt-1">
             Ready to continue your math journey? Let's keep the momentum going!
