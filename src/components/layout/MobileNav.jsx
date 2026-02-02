@@ -9,6 +9,7 @@ const navItems = [
   { href: '/topics', label: 'Topics', icon: '📚' },
   { href: '/capture', label: 'Scan', icon: '📷' },
   { href: '/solve', label: 'Tutor', icon: '🤖' },
+  { href: '/generate-content', label: 'Generate', icon: 'G' },
   { href: '/progress', label: 'Stats', icon: '📊' },
 ];
 

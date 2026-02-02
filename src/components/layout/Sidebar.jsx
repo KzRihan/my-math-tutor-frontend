@@ -12,7 +12,7 @@ import { useLogoutMutation } from '@/store/authApi';
 import { logout } from '@/store/authSlice';
 import { useToast } from '@/components/providers/ToastProvider';
 import { useGetMeQuery } from '@/store/userApi';
-import { FaHome, FaBook, FaCamera, FaRobot, FaChartBar, FaCog, FaUser, FaCalculator, FaSun, FaMoon, FaSignOutAlt, FaHourglassHalf } from 'react-icons/fa';
+import { FaHome, FaBook, FaCamera, FaRobot, FaChartBar, FaCog, FaUser, FaCalculator, FaSun, FaMoon, FaSignOutAlt, FaHourglassHalf, FaMagic } from 'react-icons/fa';
 
 const SERVER_BASE_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:8001';
 
@@ -21,6 +21,7 @@ const navItems = [
   { href: '/topics', label: 'Topics', icon: FaBook },
   { href: '/capture', label: 'Capture', icon: FaCamera },
   { href: '/solve', label: 'AI Tutor', icon: FaRobot },
+  { href: '/generate-content', label: 'Generate', icon: FaMagic },
   { href: '/progress', label: 'Progress', icon: FaChartBar },
 ];
 

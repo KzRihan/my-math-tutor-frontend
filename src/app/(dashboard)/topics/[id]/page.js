@@ -1,9 +1,10 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Card, { CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
 import Progress from '@/components/ui/Progress';
 import Badge, { DifficultyBadge, StatusBadge } from '@/components/ui/Badge';
 import { useGetPublishedTopicQuery, useGetPublishedTopicsQuery } from '@/store/topicApi';
@@ -12,6 +13,10 @@ import {
     useEnrollInTopicMutation,
     useUpdateLessonProgressMutation
 } from '@/store/enrollmentApi';
+import { 
+    useGenerateLessonContentMutation,
+    useSaveLessonContentMutation
+} from '@/store/adminApi';
 import { useGetMeQuery } from '@/store/userApi';
 import { formatDuration } from '@/lib/utils';
 import { useToast } from '@/components/providers/ToastProvider';
@@ -26,23 +31,36 @@ import {
   FaLink,
   FaBullseye,
   FaPlay,
+  FaRobot,
   FaRocket
 } from 'react-icons/fa';
 import { HiInbox } from 'react-icons/hi2';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 export default function TopicDetailPage() {
     const params = useParams();
+    const searchParams = useSearchParams();
     const toast = useToast();
     const [showEnrollmentModal, setShowEnrollmentModal] = useState(false);
+    const [activeTab, setActiveTab] = useState(() => (
+        searchParams.get('tab') === 'generate' ? 'generate' : 'lessons'
+    ));
+    const [contentSettings, setContentSettings] = useState({
+        exercisesCount: 4,
+        quizCount: 5,
+        generateImages: true,
+    });
+    const [generatingLessonId, setGeneratingLessonId] = useState(null);
     
-    const { data: topicData, isLoading: isLoadingTopic, error: topicError } = useGetPublishedTopicQuery(params.id);
+    const { data: topicData, isLoading: isLoadingTopic, error: topicError, refetch: refetchTopic } = useGetPublishedTopicQuery(params.id);
     const { data: allTopicsData } = useGetPublishedTopicsQuery({ limit: 1000 });
     const { data: enrollmentData, isLoading: isLoadingEnrollment } = useGetEnrollmentQuery(params.id, {
         skip: !params.id, // Skip if no topic ID
     });
     const { data: userData } = useGetMeQuery();
     const [enrollInTopic, { isLoading: isEnrolling }] = useEnrollInTopicMutation();
+    const [generateLessonContent] = useGenerateLessonContentMutation();
+    const [saveLessonContent] = useSaveLessonContentMutation();
     
     const topic = topicData?.data;
     const allTopics = allTopicsData?.data || [];
@@ -54,6 +72,65 @@ export default function TopicDetailPage() {
     
     // Check if user can enroll in this topic
     const canEnroll = !userLearnLevel || userLearnLevel === topic?.gradeBand;
+
+    const clampNumber = (value, min, max) => {
+        const parsed = Number(value);
+        if (Number.isNaN(parsed)) return min;
+        return Math.max(min, Math.min(max, parsed));
+    };
+
+    const handleGenerateContent = async (lesson) => {
+        if (!topic) {
+            toast.error('Topic data is not available. Please try again.');
+            return;
+        }
+
+        const lessonId = lesson._id?.toString() || lesson.id?.toString();
+        const topicId = topic.id || topic._id;
+
+        if (!lessonId || !topicId) {
+            toast.error('Missing lesson or topic ID. Please refresh and try again.');
+            return;
+        }
+
+        try {
+            setGeneratingLessonId(lessonId);
+
+            const generatedResult = await generateLessonContent({
+                topicTitle: topic.title,
+                lessonTitle: lesson.title,
+                grade: topic.gradeBand,
+                difficultyLevel: topic.difficulty,
+                exercisesCount: contentSettings.exercisesCount,
+                quizCount: contentSettings.quizCount,
+                generateImages: contentSettings.generateImages,
+            }).unwrap();
+
+            const lessonContent = generatedResult?.data?.lesson || generatedResult?.lesson;
+
+            if (!lessonContent) {
+                throw new Error('No lesson content returned from the generator.');
+            }
+
+            await saveLessonContent({
+                topicId,
+                lessonId,
+                content: lessonContent,
+            }).unwrap();
+
+            toast.success(`Content generated for "${lesson.title}"`);
+            refetchTopic();
+        } catch (error) {
+            const errorMessage = error?.data?.error?.message
+                || error?.data?.message
+                || error?.error
+                || error?.message
+                || 'Failed to generate content. Please try again.';
+            toast.error(errorMessage);
+        } finally {
+            setGeneratingLessonId(null);
+        }
+    };
 
     if (isLoadingTopic) {
         return (
@@ -306,155 +383,287 @@ export default function TopicDetailPage() {
 
             {/* Lessons Section */}
             <div>
-                <h2 className="text-2xl font-display font-bold mb-6 flex items-center gap-3">
-                    <FaBook />
-                    Lessons & Activities
-                </h2>
-
-                {lessons.length > 0 ? (
-                    <div className="grid gap-4">
-                        {[...lessons]
-                            .sort((a, b) => (a.order || 0) - (b.order || 0))
-                            .map((lesson, index) => {
-                                const hasContent = lesson.content && Object.keys(lesson.content).length > 0;
-                                const lessonId = lesson._id?.toString() || lesson.id?.toString();
-                                
-                                // Get lesson progress from enrollment
-                                const lessonProgress = getLessonProgress(lessonId);
-                                const isCompleted = lessonProgress?.status === 'completed';
-                                const isInProgress = lessonProgress?.status === 'in_progress';
-                                
-                                // Lessons are locked if:
-                                // 1. Not enrolled and not first lesson
-                                // 2. Previous lesson doesn't have content
-                                // 3. Previous lesson is not completed (if enrolled)
-                                const prevLesson = index > 0 ? lessons[index - 1] : null;
-                                const prevLessonId = prevLesson?._id?.toString() || prevLesson?.id?.toString();
-                                const prevLessonProgress = prevLessonId ? getLessonProgress(prevLessonId) : null;
-                                const prevLessonCompleted = prevLessonProgress?.status === 'completed';
-                                
-                                const isLocked = !isEnrolled 
-                                    ? index > 0 // Lock all except first if not enrolled
-                                    : index > 0 && (!prevLesson?.content || (!prevLessonCompleted && isEnrolled)); // Lock if previous not completed
-                                
-                                return (
-                                    <Card
-                                        key={lesson._id || lesson.id || index}
-                                        variant={isCompleted ? 'glass' : 'default'}
-                                        interactive={!isLocked && hasContent}
-                                        className={`group transition-all duration-300 ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
-                                    >
-                                        <CardContent className="flex items-center gap-6 p-6">
-                                            {/* Lesson Number */}
-                                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl flex-shrink-0 transition-all ${
-                                                isCompleted
-                                                    ? 'bg-success/20 text-success'
-                                                    : isLocked
-                                                        ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-400'
-                                                        : 'bg-primary-500/20 text-primary-600 group-hover:scale-110'
-                                            }`}>
-                                                {isCompleted ? <FaCheckCircle /> : isLocked ? <FaLock /> : index + 1}
-                                            </div>
-
-                                            {/* Lesson Info */}
-                                            <div className="flex-1 min-w-0">
-                                                <h3 className={`font-bold mb-1 text-lg ${isLocked ? 'text-foreground-secondary' : ''}`}>
-                                                    {lesson.title}
-                                                </h3>
-                                                <p className="text-sm text-foreground-secondary flex items-center gap-4">
-                                                    <span className="flex items-center gap-1">
-                                                        <FaClock className="text-xs" />
-                                                        {lesson.estimatedTime || 15} min
-                                                    </span>
-                                                    {isCompleted && (
-                                                        <span className="flex items-center gap-1 text-success font-medium">
-                                                            <FaCheckCircle className="text-xs" />
-                                                            Completed
-                                                        </span>
-                                                    )}
-                                                    {isInProgress && !isCompleted && (
-                                                        <span className="flex items-center gap-1 text-primary font-medium">
-                                                            <FaPlay className="text-xs" />
-                                                            In Progress
-                                                        </span>
-                                                    )}
-                                                    {isLocked && (
-                                                        <span className="flex items-center gap-1">
-                                                            <FaLock className="text-xs" />
-                                                            {!isEnrolled 
-                                                                ? 'Enroll to unlock' 
-                                                                : 'Complete previous lessons to unlock'}
-                                                        </span>
-                                                    )}
-                                                    {!hasContent && !isLocked && (
-                                                        <span className="flex items-center gap-1 text-warning font-medium">
-                                                            Content coming soon
-                                                        </span>
-                                                    )}
-                                                </p>
-                                            </div>
-
-                                            {/* Action Button */}
-                                            {!isEnrolled && !isLocked && hasContent && (
-                                                canEnroll ? (
-                                                    <Button
-                                                        variant="secondary"
-                                                        className="font-bold"
-                                                        onClick={() => setShowEnrollmentModal(true)}
-                                                    >
-                                                        <FaLock className="mr-2" />
-                                                        Enroll to Start
-                                                    </Button>
-                                                ) : (
-                                                    <Button
-                                                        variant="secondary"
-                                                        className="font-bold"
-                                                        disabled
-                                                        title={`You can only enroll in ${userLearnLevel || 'your'} level topics`}
-                                                    >
-                                                        <FaLock className="mr-2" />
-                                                        Enrollment Restricted
-                                                    </Button>
-                                                )
-                                            )}
-                                            {isEnrolled && !isLocked && hasContent && (
-                                                <Link href={`/topics/${topic.id}/lesson/${lesson._id || lesson.id || lesson.order}`}>
-                                                    <Button
-                                                        variant={isCompleted ? 'secondary' : 'primary'}
-                                                        className="font-bold"
-                                                    >
-                                                        {isCompleted ? (
-                                                            <>
-                                                                <FaBook className="mr-2" />
-                                                                Review
-                                                            </>
-                                                        ) : isInProgress ? (
-                                                            <>
-                                                                <FaPlay className="mr-2" />
-                                                                Continue
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <FaPlay className="mr-2" />
-                                                                Start
-                                                            </>
-                                                        )}
-                                                    </Button>
-                                                </Link>
-                                            )}
-                                        </CardContent>
-                                    </Card>
-                                );
-                            })}
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+                    <h2 className="text-2xl font-display font-bold flex items-center gap-3">
+                        <FaBook />
+                        Lessons & Activities
+                    </h2>
+                    <div className="inline-flex items-center gap-1 rounded-xl bg-background-secondary border border-[var(--card-border)] p-1">
+                        <button
+                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                                activeTab === 'lessons'
+                                    ? 'bg-primary-500 text-white shadow'
+                                    : 'text-foreground-secondary hover:text-foreground'
+                            }`}
+                            onClick={() => setActiveTab('lessons')}
+                        >
+                            Lessons
+                        </button>
+                        <button
+                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                                activeTab === 'generate'
+                                    ? 'bg-primary-500 text-white shadow'
+                                    : 'text-foreground-secondary hover:text-foreground'
+                            }`}
+                            onClick={() => setActiveTab('generate')}
+                        >
+                            Generate Content
+                        </button>
                     </div>
-                ) : (
-                    <Card variant="glass" className="p-12 text-center">
-                        <HiInbox className="text-5xl mb-4 mx-auto text-foreground-secondary" />
-                        <h3 className="text-xl font-bold mb-2">Lessons Coming Soon</h3>
-                        <p className="text-foreground-secondary">
-                            We&apos;re working on creating engaging lessons for this topic. Check back soon!
-                        </p>
-                    </Card>
+                </div>
+
+                {activeTab === 'lessons' && (
+                    lessons.length > 0 ? (
+                        <div className="grid gap-4">
+                            {[...lessons]
+                                .sort((a, b) => (a.order || 0) - (b.order || 0))
+                                .map((lesson, index) => {
+                                    const hasContent = lesson.content && Object.keys(lesson.content).length > 0;
+                                    const lessonId = lesson._id?.toString() || lesson.id?.toString();
+                                    
+                                    // Get lesson progress from enrollment
+                                    const lessonProgress = getLessonProgress(lessonId);
+                                    const isCompleted = lessonProgress?.status === 'completed';
+                                    const isInProgress = lessonProgress?.status === 'in_progress';
+                                    
+                                    // Lessons are locked if:
+                                    // 1. Not enrolled and not first lesson
+                                    // 2. Previous lesson doesn't have content
+                                    // 3. Previous lesson is not completed (if enrolled)
+                                    const prevLesson = index > 0 ? lessons[index - 1] : null;
+                                    const prevLessonId = prevLesson?._id?.toString() || prevLesson?.id?.toString();
+                                    const prevLessonProgress = prevLessonId ? getLessonProgress(prevLessonId) : null;
+                                    const prevLessonCompleted = prevLessonProgress?.status === 'completed';
+                                    
+                                    const isLocked = !isEnrolled 
+                                        ? index > 0 // Lock all except first if not enrolled
+                                        : index > 0 && (!prevLesson?.content || (!prevLessonCompleted && isEnrolled)); // Lock if previous not completed
+                                    
+                                    return (
+                                        <Card
+                                            key={lesson._id || lesson.id || index}
+                                            variant={isCompleted ? 'glass' : 'default'}
+                                            interactive={!isLocked && hasContent}
+                                            className={`group transition-all duration-300 ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                        >
+                                            <CardContent className="flex items-center gap-6 p-6">
+                                                {/* Lesson Number */}
+                                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl flex-shrink-0 transition-all ${
+                                                    isCompleted
+                                                        ? 'bg-success/20 text-success'
+                                                        : isLocked
+                                                            ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-400'
+                                                            : 'bg-primary-500/20 text-primary-600 group-hover:scale-110'
+                                                }`}>
+                                                    {isCompleted ? <FaCheckCircle /> : isLocked ? <FaLock /> : index + 1}
+                                                </div>
+
+                                                {/* Lesson Info */}
+                                                <div className="flex-1 min-w-0">
+                                                    <h3 className={`font-bold mb-1 text-lg ${isLocked ? 'text-foreground-secondary' : ''}`}>
+                                                        {lesson.title}
+                                                    </h3>
+                                                    <p className="text-sm text-foreground-secondary flex items-center gap-4">
+                                                        <span className="flex items-center gap-1">
+                                                            <FaClock className="text-xs" />
+                                                            {lesson.estimatedTime || 15} min
+                                                        </span>
+                                                        {isCompleted && (
+                                                            <span className="flex items-center gap-1 text-success font-medium">
+                                                                <FaCheckCircle className="text-xs" />
+                                                                Completed
+                                                            </span>
+                                                        )}
+                                                        {isInProgress && !isCompleted && (
+                                                            <span className="flex items-center gap-1 text-primary font-medium">
+                                                                <FaPlay className="text-xs" />
+                                                                In Progress
+                                                            </span>
+                                                        )}
+                                                        {isLocked && (
+                                                            <span className="flex items-center gap-1">
+                                                                <FaLock className="text-xs" />
+                                                                {!isEnrolled 
+                                                                    ? 'Enroll to unlock' 
+                                                                    : 'Complete previous lessons to unlock'}
+                                                            </span>
+                                                        )}
+                                                        {!hasContent && !isLocked && (
+                                                            <span className="flex items-center gap-1 text-warning font-medium">
+                                                                Content coming soon
+                                                            </span>
+                                                        )}
+                                                    </p>
+                                                </div>
+
+                                                {/* Action Button */}
+                                                {!isEnrolled && !isLocked && hasContent && (
+                                                    canEnroll ? (
+                                                        <Button
+                                                            variant="secondary"
+                                                            className="font-bold"
+                                                            onClick={() => setShowEnrollmentModal(true)}
+                                                        >
+                                                            <FaLock className="mr-2" />
+                                                            Enroll to Start
+                                                        </Button>
+                                                    ) : (
+                                                        <Button
+                                                            variant="secondary"
+                                                            className="font-bold"
+                                                            disabled
+                                                            title={`You can only enroll in ${userLearnLevel || 'your'} level topics`}
+                                                        >
+                                                            <FaLock className="mr-2" />
+                                                            Enrollment Restricted
+                                                        </Button>
+                                                    )
+                                                )}
+                                                {isEnrolled && !isLocked && hasContent && (
+                                                    <Link href={`/topics/${topic.id}/lesson/${lesson._id || lesson.id || lesson.order}`}>
+                                                        <Button
+                                                            variant={isCompleted ? 'secondary' : 'primary'}
+                                                            className="font-bold"
+                                                        >
+                                                            {isCompleted ? (
+                                                                <>
+                                                                    <FaBook className="mr-2" />
+                                                                    Review
+                                                                </>
+                                                            ) : isInProgress ? (
+                                                                <>
+                                                                    <FaPlay className="mr-2" />
+                                                                    Continue
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <FaPlay className="mr-2" />
+                                                                    Start
+                                                                </>
+                                                            )}
+                                                        </Button>
+                                                    </Link>
+                                                )}
+                                            </CardContent>
+                                        </Card>
+                                    );
+                                })}
+                        </div>
+                    ) : (
+                        <Card variant="glass" className="p-12 text-center">
+                            <HiInbox className="text-5xl mb-4 mx-auto text-foreground-secondary" />
+                            <h3 className="text-xl font-bold mb-2">Lessons Coming Soon</h3>
+                            <p className="text-foreground-secondary">
+                                We&apos;re working on creating engaging lessons for this topic. Check back soon!
+                            </p>
+                        </Card>
+                    )
+                )}
+
+                {activeTab === 'generate' && (
+                    <div className="space-y-6">
+                        <Card variant="glass" className="p-6">
+                            <CardHeader className="p-0 mb-4">
+                                <CardTitle className="flex items-center gap-2">
+                                    <FaRobot />
+                                    Content Settings
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                    <Input
+                                        label="Exercises per lesson"
+                                        type="number"
+                                        min={1}
+                                        max={10}
+                                        value={contentSettings.exercisesCount}
+                                        onChange={(event) => {
+                                            const value = clampNumber(event.target.value, 1, 10);
+                                            setContentSettings((prev) => ({ ...prev, exercisesCount: value }));
+                                        }}
+                                    />
+                                    <Input
+                                        label="Quiz questions"
+                                        type="number"
+                                        min={1}
+                                        max={5}
+                                        value={contentSettings.quizCount}
+                                        onChange={(event) => {
+                                            const value = clampNumber(event.target.value, 1, 5);
+                                            setContentSettings((prev) => ({ ...prev, quizCount: value }));
+                                        }}
+                                    />
+                                    <div className="flex items-center gap-3 pt-6">
+                                        <input
+                                            id="generate-images-toggle"
+                                            type="checkbox"
+                                            className="h-4 w-4 accent-primary-500"
+                                            checked={contentSettings.generateImages}
+                                            onChange={(event) => {
+                                                setContentSettings((prev) => ({ ...prev, generateImages: event.target.checked }));
+                                            }}
+                                        />
+                                        <label htmlFor="generate-images-toggle" className="text-sm font-medium text-foreground">
+                                            Generate images
+                                        </label>
+                                    </div>
+                                </div>
+                                <p className="text-xs text-foreground-secondary mt-4">
+                                    Limits: 1-10 exercises, 1-5 quiz questions per lesson.
+                                </p>
+                            </CardContent>
+                        </Card>
+
+                        {lessons.length > 0 ? (
+                            <div className="grid gap-4">
+                                {[...lessons]
+                                    .sort((a, b) => (a.order || 0) - (b.order || 0))
+                                    .map((lesson, index) => {
+                                        const hasContent = lesson.content && Object.keys(lesson.content).length > 0;
+                                        const lessonId = lesson._id?.toString() || lesson.id?.toString();
+                                        const isGenerating = generatingLessonId === lessonId;
+                                        const isBusy = generatingLessonId !== null && generatingLessonId !== lessonId;
+
+                                        return (
+                                            <Card key={lesson._id || lesson.id || index} variant="glass">
+                                                <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-12 h-12 rounded-2xl bg-primary-500/20 text-primary-600 flex items-center justify-center font-bold">
+                                                            {index + 1}
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="font-bold text-lg">{lesson.title}</h3>
+                                                            <p className="text-sm text-foreground-secondary">
+                                                                {hasContent ? 'Content ready' : 'No content yet'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-3">
+                                                        <Button
+                                                            variant={hasContent ? 'secondary' : 'primary'}
+                                                            className="font-bold"
+                                                            loading={isGenerating}
+                                                            disabled={isGenerating || isBusy}
+                                                            onClick={() => handleGenerateContent(lesson)}
+                                                        >
+                                                            {hasContent ? 'Regenerate' : 'Generate'}
+                                                        </Button>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        );
+                                    })}
+                            </div>
+                        ) : (
+                            <Card variant="glass" className="p-12 text-center">
+                                <HiInbox className="text-5xl mb-4 mx-auto text-foreground-secondary" />
+                                <h3 className="text-xl font-bold mb-2">No Lessons Available</h3>
+                                <p className="text-foreground-secondary">
+                                    This topic does not have lessons yet. Add lessons before generating content.
+                                </p>
+                            </Card>
+                        )}
+                    </div>
                 )}
             </div>
 
