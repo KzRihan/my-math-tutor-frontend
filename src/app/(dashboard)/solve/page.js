@@ -1,32 +1,41 @@
-'use client';
+﻿'use client';
 
 import { useState, useRef, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import Card, { CardContent } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Input';
 import MathRenderer, { MathText } from '@/components/chat/MathRenderer';
-import { currentUser } from '@/data/users';
 import { getInitials } from '@/lib/utils';
 import { IoIosArrowForward } from "react-icons/io";
 import { RiLightbulbLine } from "react-icons/ri";
+import { useSelector } from 'react-redux';
+import { useGetMeQuery } from '@/store/userApi';
+import {
+  FaRobot,
+  FaLightbulb,
+  FaCheckCircle,
+  FaHandPaper,
+  FaExclamationTriangle,
+  FaCamera,
+  FaBook,
+  FaHashtag,
+} from 'react-icons/fa';
 
 
 // Backend API Base URL for streaming chat
 const STREAM_API_URL = process.env.NEXT_PUBLIC_STREAM_API_URL || 'http://192.168.0.125:8502';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
-
-// Dummy hints for now (will be replaced with AI-generated hints later)
-const defaultHints = [
-  "Identify what type of equation this is",
-  "Look for common factors or patterns",
-  "Try substituting values to verify your answer",
-];
+const SERVER_BASE_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:8001';
 
 function SolvePageContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session');
+  const reduxUser = useSelector((state) => state.auth.user);
+  const { data: userData } = useGetMeQuery();
+  const user = userData?.data || reduxUser;
 
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -34,7 +43,6 @@ function SolvePageContent() {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [revealedHints, setRevealedHints] = useState([]);
   const [currentStep, setCurrentStep] = useState(1);
   // Generate a unique agent session ID on the frontend
   const [agentSessionId] = useState(() => {
@@ -56,6 +64,16 @@ function SolvePageContent() {
     messageIdRef.current += 1;
     return `msg-${Date.now()}-${messageIdRef.current}`;
   };
+
+  const getUserProfileImageUrl = () => {
+    if (user?.profileImage) {
+      if (user.profileImage.startsWith('http')) return user.profileImage;
+      return `${SERVER_BASE_URL}${user.profileImage}`;
+    }
+    return null;
+  };
+
+  const userProfileImageUrl = getUserProfileImageUrl();
 
   // Get auth headers
   const getAuthHeaders = () => {
@@ -147,7 +165,7 @@ function SolvePageContent() {
       }
 
       try {
-        console.log('📚 Fetching session:', sessionId);
+        console.log('[session] Fetching session:', sessionId);
 
         // Check localStorage first
         let sessionData = null;
@@ -156,7 +174,7 @@ function SolvePageContent() {
           if (storedSession) {
             try {
               sessionData = JSON.parse(storedSession);
-              console.log('✅ Session loaded from localStorage:', sessionData);
+              console.log('[session] Loaded from localStorage:', sessionData);
             } catch (e) {
               console.error('Error parsing stored session:', e);
             }
@@ -173,7 +191,7 @@ function SolvePageContent() {
           }
 
           sessionData = data.data;
-          console.log('✅ Session loaded from API:', sessionData);
+          console.log('[session] Loaded from API:', sessionData);
         }
 
         setSession(sessionData);
@@ -218,9 +236,9 @@ function SolvePageContent() {
         }
 
         // Call streaming API with the problem/question
-        console.log('🔑 Using agent session ID:', agentSessionId);
-        console.log('📝 Sending problem:', problemQuestion);
-        console.log('🌐 Stream API URL:', `${STREAM_API_URL}/chat`);
+        console.log('[chat] Using agent session ID:', agentSessionId);
+        console.log('[chat] Sending problem:', problemQuestion);
+        console.log('[chat] Stream API URL:', `${STREAM_API_URL}/chat`);
 
         setIsTyping(true);
         controllerRef.current = new AbortController();
@@ -236,7 +254,7 @@ function SolvePageContent() {
           stream: true
         };
 
-        console.log('📤 Request body:', JSON.stringify(requestBody, null, 2));
+        console.log('[chat] Request body:', JSON.stringify(requestBody, null, 2));
 
         let streamResponse;
         try {
@@ -249,7 +267,7 @@ function SolvePageContent() {
             signal: controllerRef.current.signal
           });
         } catch (fetchError) {
-          console.error('❌ Fetch error details:', fetchError);
+          console.error('[chat] Fetch error details:', fetchError);
           if (fetchError.name === 'AbortError') {
             throw new Error('Request was aborted');
           }
@@ -258,7 +276,7 @@ function SolvePageContent() {
 
         if (!streamResponse.ok) {
           const errorText = await streamResponse.text().catch(() => 'Unknown error');
-          console.error('❌ Response error:', streamResponse.status, errorText);
+          console.error('[chat] Response error:', streamResponse.status, errorText);
           throw new Error(`HTTP error! status: ${streamResponse.status}, message: ${errorText}`);
         }
 
@@ -396,32 +414,20 @@ function SolvePageContent() {
     fetchSessionAndStartChat();
   }, [sessionId, agentSessionId]);
 
-  // Reveal a hint
-  const revealHint = (index) => {
-    if (!revealedHints.includes(index)) {
-      setRevealedHints([...revealedHints, index]);
+  // If /solve is opened directly, allow immediate typed chat without capture.
+  useEffect(() => {
+    if (!loading && !sessionId && messages.length === 0) {
+      setMessages([
+        {
+          id: `msg-welcome-${Date.now()}`,
+          role: 'teacher',
+          message: 'Hi! You can type any math question here. Capturing a problem is optional.',
+          type: 'welcome',
+          timestamp: new Date().toISOString(),
+        },
+      ]);
     }
-  };
-
-  // Get current problem LaTeX from session
-  const getCurrentProblemLatex = () => {
-    if (!session || !session.blocks) return '';
-
-    // Try to find LaTeX from formula blocks
-    const formulaBlock = session.blocks.find(b => b.type === 'formula' && b.latex);
-    if (formulaBlock && formulaBlock.latex) {
-      return formulaBlock.latex;
-    }
-
-    // Fallback to layoutMarkdown if available
-    if (session.layoutMarkdown) {
-      // Extract LaTeX from markdown (simple extraction)
-      const latexMatch = session.layoutMarkdown.match(/\$\$([^$]+)\$\$/);
-      if (latexMatch) return latexMatch[1];
-    }
-
-    return session.layoutMarkdown || '';
-  };
+  }, [loading, sessionId, messages.length]);
 
   // Stop streaming
   const stopStream = () => {
@@ -431,14 +437,7 @@ function SolvePageContent() {
 
   // Send message with streaming
   const sendMessage = async (messageText, messageType = 'teaching') => {
-    if (!messageText.trim() || !session) return;
-
-    const currentProblemLatex = getCurrentProblemLatex();
-
-    if (!currentProblemLatex) {
-      alert('No problem data available. Please capture a problem first.');
-      return;
-    }
+    if (!messageText.trim()) return;
 
     // Add user message
     const userMessage = {
@@ -467,8 +466,8 @@ function SolvePageContent() {
         stream: true
       };
 
-      console.log('📤 Sending message to:', `${STREAM_API_URL}/chat`);
-      console.log('📤 Request body:', JSON.stringify(requestBody, null, 2));
+      console.log('[chat] Sending message to:', `${STREAM_API_URL}/chat`);
+      console.log('[chat] Request body:', JSON.stringify(requestBody, null, 2));
 
       let response;
       try {
@@ -479,7 +478,7 @@ function SolvePageContent() {
           signal: controllerRef.current.signal
         });
       } catch (fetchError) {
-        console.error('❌ Fetch error details:', fetchError);
+        console.error('[chat] Fetch error details:', fetchError);
         if (fetchError.name === 'AbortError') {
           throw new Error('Request was aborted');
         }
@@ -488,7 +487,7 @@ function SolvePageContent() {
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'Unknown error');
-        console.error('❌ Response error:', response.status, errorText);
+        console.error('[chat] Response error:', response.status, errorText);
         throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
       }
 
@@ -572,7 +571,7 @@ function SolvePageContent() {
             // Not JSON, use as-is (preserve spaces)
             // Log first few chunks to debug space issues
             if (rawTextAccumulator.length < 100) {
-              console.log('📥 Raw data chunk:', JSON.stringify(data));
+              console.log('[chat] Raw data chunk:', JSON.stringify(data));
             }
           }
 
@@ -644,7 +643,6 @@ function SolvePageContent() {
   };
 
   const handleHint = async () => {
-    if (!session) return;
     await sendMessage('I need a hint', 'hint');
   };
 
@@ -663,9 +661,15 @@ function SolvePageContent() {
         {/* Avatar */}
         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl flex-shrink-0 shadow-lg ${isTeacher
           ? 'bg-gradient-to-br from-violet-500 to-purple-600'
-          : 'bg-gradient-to-br from-blue-500 to-cyan-500'
+          : 'bg-gradient-to-br from-blue-500 to-cyan-500 relative overflow-hidden'
           }`}>
-          {isTeacher ? '🤖' : getInitials(currentUser.firstName, currentUser.lastName)}
+          {isTeacher ? (
+            <FaRobot />
+          ) : userProfileImageUrl ? (
+            <Image src={userProfileImageUrl} alt="Your profile" fill className="object-cover" />
+          ) : (
+            getInitials(user?.firstName, user?.lastName)
+          )}
         </div>
 
         {/* Message */}
@@ -690,17 +694,17 @@ function SolvePageContent() {
             {/* Type indicator */}
             {msg.type === 'hint' && (
               <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium mb-3 badge-warning">
-                <span>💡</span> Hint
+                <FaLightbulb /> Hint
               </div>
             )}
             {msg.type === 'success' && (
               <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium mb-3 badge-success">
-                <span>🎉</span> Correct!
+                <FaCheckCircle /> Correct!
               </div>
             )}
             {msg.type === 'welcome' && (
               <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium mb-3 badge-primary">
-                <span>👋</span> Welcome
+                <FaHandPaper /> Welcome
               </div>
             )}
 
@@ -743,7 +747,7 @@ function SolvePageContent() {
   const getProblemDisplay = () => {
     if (!session || !session.blocks || session.blocks.length === 0) {
       return {
-        text: 'Solve the captured math problem',
+        text: 'Type your question below, or capture a problem for image-based solving.',
         latex: null,
       };
     }
@@ -756,7 +760,7 @@ function SolvePageContent() {
     }
     const firstText = session.blocks.find(b => b.type === 'text');
     return {
-      text: firstText?.content || 'Solve the captured math problem',
+      text: firstText?.content || 'Type your question below, or capture a problem for image-based solving.',
       latex: null,
     };
   };
@@ -770,7 +774,7 @@ function SolvePageContent() {
       >
         <div className="text-center">
           <div className="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-4xl mb-6 shadow-xl animate-pulse">
-            🤖
+            <FaRobot />
           </div>
           <h3 className="text-xl font-semibold mb-2 text-foreground">Loading Your Session...</h3>
           <p className="text-foreground-secondary">
@@ -795,7 +799,7 @@ function SolvePageContent() {
       >
         <div className="text-center max-w-md px-6">
           <div className="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center text-4xl mb-6 shadow-xl">
-            😕
+            <FaExclamationTriangle />
           </div>
           <h3 className="text-xl font-semibold mb-2 text-foreground">Oops! Something went wrong</h3>
           <p className="text-foreground-secondary mb-8">
@@ -803,42 +807,13 @@ function SolvePageContent() {
           </p>
           <Link href="/capture">
             <Button size="lg" className="shadow-lg">
-              📷 Capture New Problem
+              Capture New Problem
             </Button>
           </Link>
         </div>
       </div>
     );
   }
-
-  // No session state
-  if (!sessionId || !session) {
-    return (
-      <div
-        className="fixed inset-0 lg:ml-64 flex items-center justify-center"
-        style={{ background: 'var(--background)' }}
-      >
-        <div className="text-center max-w-lg px-6">
-          <div className="w-24 h-24 mx-auto rounded-3xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-5xl mb-8 shadow-2xl">
-            📸
-          </div>
-          <h3 className="text-2xl font-bold mb-3 text-foreground">Ready to Learn?</h3>
-          <p className="text-foreground-secondary text-lg mb-8">
-            Capture a math problem to start your personalized tutoring session with AI.
-          </p>
-          <Link href="/capture">
-            <Button size="lg" className="shadow-xl px-8 py-4 text-lg">
-              📷 Capture Math Problem
-            </Button>
-          </Link>
-          <p className="text-sm text-foreground-secondary mt-6">
-            Take a photo or upload an image of any math problem
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   const problemDisplay = getProblemDisplay();
 
   return (
@@ -865,20 +840,24 @@ function SolvePageContent() {
           <div className="p-6" style={{ borderBottom: '1px solid var(--card-border)' }}>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-xl shadow-lg">
-                📐
+                <FaBook />
               </div>
               <div>
-                <h2 className="font-bold text-foreground">Current Problem</h2>
-                <p className="text-xs text-foreground-secondary">Step {currentStep} of 5</p>
+                <h2 className="font-bold text-foreground">{session ? 'Current Problem' : 'AI Tutor'}</h2>
+                <p className="text-xs text-foreground-secondary">
+                  {session ? `Step ${currentStep} of 5` : 'No capture required'}
+                </p>
               </div>
             </div>
             {/* Progress Bar */}
-            <div className="mt-4 progress-bar">
-              <div
-                className="progress-bar-fill"
-                style={{ width: `${(currentStep / 5) * 100}%` }}
-              />
-            </div>
+            {session && (
+              <div className="mt-4 progress-bar">
+                <div
+                  className="progress-bar-fill"
+                  style={{ width: `${(currentStep / 5) * 100}%` }}
+                />
+              </div>
+            )}
           </div>
 
           <div className="p-6 space-y-6">
@@ -897,7 +876,7 @@ function SolvePageContent() {
                 </div>
               )}
               {/* Show all blocks if multiple */}
-              {session.blocks && session.blocks.length > 1 && (
+              {session?.blocks && session.blocks.length > 1 && (
                 <div className="mt-3 space-y-2">
                   {session.blocks.slice(1).map((block, i) => (
                     <div key={i} className="p-3 rounded-xl card">
@@ -912,50 +891,11 @@ function SolvePageContent() {
               )}
             </div>
 
-            {/* Available Hints */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-lg">💡</span>
-                <h3 className="font-semibold text-foreground">Available Hints</h3>
-              </div>
-              <div className="space-y-2">
-                {defaultHints.map((hint, i) => (
-                  <button
-                    key={i}
-                    className={`w-full p-4 rounded-xl text-left text-sm transition-all duration-300 ${revealedHints.includes(i)
-                      ? 'badge-warning'
-                      : ''
-                      }`}
-                    style={{
-                      background: revealedHints.includes(i) ? 'rgba(234, 179, 8, 0.15)' : 'var(--background-secondary)',
-                      border: revealedHints.includes(i) ? '2px solid rgba(234, 179, 8, 0.4)' : '2px solid transparent',
-                      color: 'var(--foreground)',
-                    }}
-                    onClick={() => revealHint(i)}
-                  >
-                    {revealedHints.includes(i) ? (
-                      <span>{hint}</span>
-                    ) : (
-                      <span className="flex items-center gap-2 text-foreground-secondary">
-                        <span
-                          className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium"
-                          style={{ background: 'var(--card-border)' }}
-                        >
-                          {i + 1}
-                        </span>
-                        Click to reveal hint
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Image Preview (if available) */}
-            {session.imageBase64 && (
+            {session?.imageBase64 && (
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="text-lg">📷</span>
+                  <FaCamera className="text-lg" />
                   <h3 className="font-semibold text-foreground">Original Image</h3>
                 </div>
                 <div className="rounded-xl overflow-hidden" style={{ border: '2px solid var(--card-border)' }}>
@@ -970,7 +910,7 @@ function SolvePageContent() {
 
             <Link href="/capture" className="block">
               <Button variant="secondary" className="w-full">
-                📷 Scan New Problem
+                Scan New Problem
               </Button>
             </Link>
           </div>
@@ -993,7 +933,7 @@ function SolvePageContent() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-2xl shadow-lg">
-                🤖
+                <FaRobot />
               </div>
               <div>
                 <h1 className="font-bold text-lg text-foreground">AI Math Tutor</h1>
@@ -1025,7 +965,7 @@ function SolvePageContent() {
           {isTyping && (
             <div className="flex gap-4 animate-fade-in">
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-xl shadow-lg">
-                🤖
+                <FaRobot />
               </div>
               <div>
                 <div className="text-sm font-medium mb-1 text-foreground">Math Tutor</div>
@@ -1055,9 +995,9 @@ function SolvePageContent() {
           <div className="flex-shrink-0 px-6 pb-2">
             <div className="flex flex-wrap gap-2">
               {[
-                { icon: '🔢', text: 'Identify equation type', action: "I think this is a quadratic equation" },
-                { icon: '📖', text: 'Explain first step', action: "Can you explain the first step?" },
-                { icon: '💡', text: 'Show similar example', action: "Show me a similar example" },
+                { icon: FaHashtag, text: 'Identify equation type', action: "I think this is a quadratic equation" },
+                { icon: FaBook, text: 'Explain first step', action: "Can you explain the first step?" },
+                { icon: FaLightbulb, text: 'Show similar example', action: "Show me a similar example" },
               ].map((item, i) => (
                 <button
                   key={i}
@@ -1069,7 +1009,10 @@ function SolvePageContent() {
                     color: 'var(--foreground)',
                   }}
                 >
-                  {item.icon} {item.text}
+                  <span className="inline-flex items-center gap-2">
+                    <item.icon />
+                    {item.text}
+                  </span>
                 </button>
               ))}
             </div>
@@ -1160,7 +1103,7 @@ export default function SolvePage() {
       >
         <div className="text-center">
           <div className="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-4xl mb-6 shadow-xl animate-pulse">
-            🤖
+            <FaRobot />
           </div>
           <h3 className="text-xl font-semibold mb-2 text-foreground">Loading...</h3>
         </div>
@@ -1170,4 +1113,5 @@ export default function SolvePage() {
     </Suspense>
   );
 }
+
 
