@@ -4,12 +4,12 @@ import { useState, useEffect } from 'react';
 import Button from '@/components/ui/Button';
 import { useSubmitAnswerMutation, useGetUserHistoryQuery } from '@/store/questionApi';
 import { useToast } from '@/components/providers/ToastProvider';
-import { FaCheckCircle, FaTimesCircle, FaSpinner, FaTrophy } from 'react-icons/fa';
+import { FaCheckCircle, FaTimesCircle, FaSpinner } from 'react-icons/fa';
 
 /**
  * PracticeQuestion Component
- * 
- * Displays a practice question with answer input and XP reward system
+ *
+ * Displays a practice or quiz question with answer input and feedback.
  */
 export default function PracticeQuestion({
   exercise,
@@ -22,47 +22,43 @@ export default function PracticeQuestion({
 }) {
   const [userAnswer, setUserAnswer] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [result, setResult] = useState(null); // { isCorrect, xpAwarded, message }
+  const [result, setResult] = useState(null); // { isCorrect, message }
   const [showCorrectAnswer, setShowCorrectAnswer] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false); // Track if quiz answer has been submitted
-  const [submittedAnswer, setSubmittedAnswer] = useState(''); // Store the submitted answer
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submittedAnswer, setSubmittedAnswer] = useState('');
   const toast = useToast();
   const [submitAnswer] = useSubmitAnswerMutation();
-  
-  // Check if user has already submitted an answer for this quiz question
+
   const { data: historyData } = useGetUserHistoryQuery(100, {
-    skip: questionType !== 'quiz', // Only fetch for quiz questions
+    skip: questionType !== 'quiz',
   });
 
-  // Check on mount if user has already submitted this quiz question
   useEffect(() => {
     if (questionType === 'quiz' && historyData?.data) {
       const history = historyData.data;
-      const existingResponse = history.find(
-        (response) => {
-          const responseTopicId = response.topicId?._id?.toString() || response.topicId?.toString();
-          return (
-            responseTopicId === topicId &&
-            response.lessonId === lessonId &&
-            response.questionIndex === questionIndex &&
-            response.questionType === 'quiz'
-          );
-        }
-      );
-      
+      const existingResponse = history.find((response) => {
+        const responseTopicId = response.topicId?._id?.toString() || response.topicId?.toString();
+        return (
+          responseTopicId === topicId &&
+          response.lessonId === lessonId &&
+          response.questionIndex === questionIndex &&
+          response.questionType === 'quiz'
+        );
+      });
+
       if (existingResponse) {
         setIsSubmitted(true);
         setSubmittedAnswer(existingResponse.userAnswer || '');
         setResult({
-          isCorrect: existingResponse.isCorrect || false,
-          xpAwarded: existingResponse.xpAwarded || 0,
-          message: existingResponse.reviewStatus === 'pending' 
-            ? 'Your answer has been submitted for review. You will receive XP points once an admin reviews your answer.'
-            : existingResponse.reviewStatus === 'approved'
-            ? `Answer approved! You earned ${existingResponse.xpAwarded || 0} XP!`
-            : existingResponse.reviewStatus === 'rejected'
-            ? 'Your answer was reviewed and rejected.'
-            : 'Your answer has been submitted for review.',
+          isCorrect: !!existingResponse.isCorrect,
+          message:
+            existingResponse.reviewStatus === 'pending'
+              ? 'Your answer has been submitted for review.'
+              : existingResponse.reviewStatus === 'approved'
+              ? 'Answer approved.'
+              : existingResponse.reviewStatus === 'rejected'
+              ? 'Your answer was reviewed and rejected.'
+              : 'Your answer has been submitted for review.',
         });
       }
     }
@@ -74,7 +70,6 @@ export default function PracticeQuestion({
       return;
     }
 
-    // For quiz questions, prevent multiple submissions
     if (questionType === 'quiz' && isSubmitted) {
       toast.warning('You have already submitted an answer for this quiz question.');
       return;
@@ -84,87 +79,64 @@ export default function PracticeQuestion({
     setResult(null);
 
     try {
-      // Submit answer - backend will get correct answer and question text from lesson content if not provided
       const response = await submitAnswer({
         topicId,
         lessonId,
         questionIndex,
         questionType,
         userAnswer: userAnswer.trim(),
-        // Pass correct answer if available, otherwise backend will get it from lesson content
         correctAnswer: correctAnswer?.trim() || '',
-        // Pass question text if available, otherwise backend will get it from lesson content
         questionText: (exercise.exercise || exercise.question || '').trim() || '',
       }).unwrap();
 
-      // Extract data from response (response structure: { success, message, data: {...} })
       const responseData = response.data || response;
 
       setResult({
-        isCorrect: responseData.isCorrect,
-        xpAwarded: responseData.xpAwarded,
-        message: responseData.message,
-        totalXPEarned: responseData.totalXPEarned,
-        userLevel: responseData.userLevel,
-        userXP: responseData.userXP,
+        isCorrect: !!responseData.isCorrect,
+        message:
+          responseData.message ||
+          (responseData.isCorrect ? 'Correct answer.' : 'Incorrect answer.'),
       });
 
-      // For quiz questions, mark as submitted after successful submission
       if (questionType === 'quiz') {
         setIsSubmitted(true);
-        setSubmittedAnswer(userAnswer.trim()); // Store the submitted answer
-        // Quiz questions are submitted for admin review
+        setSubmittedAnswer(userAnswer.trim());
         toast.info(responseData.message || 'Your answer has been submitted for review.');
-      } else if (responseData.isCorrect && responseData.xpAwarded > 0) {
-        // Practice question - correct and earned XP
-        toast.success(`🎉 Correct! You earned ${responseData.xpAwarded} XP!`);
-      } else if (responseData.isCorrect && responseData.xpAwarded === 0) {
-        // Practice question - correct but already earned XP
-        toast.info('Correct! (You already earned XP for this question)');
+      } else if (responseData.isCorrect) {
+        toast.success('Correct!');
       } else {
-        // Practice question - incorrect
         toast.error('Incorrect answer. Try again!');
         setShowCorrectAnswer(true);
       }
 
-      // Notify parent component
       if (onAnswerSubmitted) {
         onAnswerSubmitted({
           questionIndex,
-          isCorrect: responseData.isCorrect,
-          xpAwarded: responseData.xpAwarded,
+          isCorrect: !!responseData.isCorrect,
         });
       }
-
-      // Trigger automatic refetch of XP-related queries using RTK Query's dispatch
-      // The cache tags will automatically invalidate and refetch the queries
-      // This is handled automatically by RTK Query's invalidatesTags
     } catch (error) {
       console.error('Error submitting answer:', error);
-      
-      // Extract error message from different possible error structures
+
       const errorData = error?.data || error;
-      const errorMessage = 
-        errorData?.error?.message || 
-        errorData?.message || 
+      const errorMessage =
+        errorData?.error?.message ||
+        errorData?.message ||
         error?.message ||
         'Failed to submit answer. Please try again.';
-      
-      // Handle specific error cases
-      if (errorMessage.includes('Correct answer is required') || errorMessage.includes('answer is missing')) {
-        toast.error('This question is missing the correct answer. Please contact support or try again later.');
-        console.error('Missing correct answer in lesson content:', {
-          questionType,
-          questionIndex,
-          topicId,
-          lessonId,
-        });
-      } else if (errorMessage.includes('already answered') || errorMessage.includes('already earned')) {
-        // If user already earned XP, show info message
+
+      if (
+        errorMessage.includes('Correct answer is required') ||
+        errorMessage.includes('answer is missing')
+      ) {
+        toast.error('This question is missing the correct answer. Please try again later.');
+      } else if (
+        errorMessage.includes('already answered') ||
+        errorMessage.includes('already earned')
+      ) {
         setResult({
           isCorrect: true,
-          xpAwarded: 0,
-          message: 'You have already earned XP for this question.',
+          message: 'You have already completed this question.',
         });
         toast.info('You have already answered this question correctly.');
       } else {
@@ -181,37 +153,28 @@ export default function PracticeQuestion({
     }
   };
 
-  const isAnswered = result !== null;
   const isCorrect = result?.isCorrect || false;
-  const xpAwarded = result?.xpAwarded || 0;
 
   return (
     <div className="p-6 rounded-2xl bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 transition-all">
       <div className="flex items-start gap-4">
-        {/* Question Number */}
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-bold flex-shrink-0">
           Q{questionIndex + 1}
         </div>
 
         <div className="flex-1 space-y-4">
-          {/* Question Text */}
-          <div className="text-lg font-medium">
-            {exercise.exercise || exercise.question || ''}
-          </div>
+          <div className="text-lg font-medium">{exercise.exercise || exercise.question || ''}</div>
 
-          {/* Answer Input */}
           <div className="flex flex-col sm:flex-row gap-3">
             <input
               type="text"
-              placeholder={questionType === 'quiz' && isSubmitted ? "Answer already submitted" : "Type your answer..."}
+              placeholder={questionType === 'quiz' && isSubmitted ? 'Answer already submitted' : 'Type your answer...'}
               value={userAnswer}
               onChange={(e) => {
-                // For quiz questions, prevent editing after submission
                 if (questionType === 'quiz' && isSubmitted) {
                   return;
                 }
                 setUserAnswer(e.target.value);
-                // Reset result when user types new answer (only for practice)
                 if (result && questionType === 'practice') {
                   setResult(null);
                   setShowCorrectAnswer(false);
@@ -248,7 +211,7 @@ export default function PracticeQuestion({
               ) : isCorrect ? (
                 <>
                   <FaCheckCircle className="mr-2" />
-                  Correct!
+                  Correct
                 </>
               ) : (
                 'Check Answer'
@@ -256,7 +219,6 @@ export default function PracticeQuestion({
             </Button>
           </div>
 
-          {/* Quiz Submission Status */}
           {questionType === 'quiz' && isSubmitted && (
             <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
               <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
@@ -264,12 +226,11 @@ export default function PracticeQuestion({
                 <span className="font-medium">Answer Submitted</span>
               </div>
               <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
-                Your answer has been submitted for review. You will receive XP points once an admin reviews your answer.
+                Your answer has been submitted for review.
               </p>
             </div>
           )}
 
-          {/* Result Display */}
           {result && (
             <div
               className={`p-4 rounded-xl border transition-all animate-fade-in ${
@@ -287,28 +248,12 @@ export default function PracticeQuestion({
                 <div className="flex-1">
                   <p
                     className={`font-medium ${
-                      isCorrect
-                        ? 'text-green-800 dark:text-green-300'
-                        : 'text-red-800 dark:text-red-300'
+                      isCorrect ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'
                     }`}
                   >
                     {result.message}
                   </p>
 
-                  {/* XP Award Display */}
-                  {isCorrect && xpAwarded > 0 && (
-                    <div className="mt-2 flex items-center gap-2 text-green-700 dark:text-green-400">
-                      <FaTrophy className="text-lg" />
-                      <span className="font-semibold">+{xpAwarded} XP</span>
-                      {result.userLevel && (
-                        <span className="text-sm">
-                          (Level {result.userLevel} • {result.userXP} total XP)
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Show correct answer if wrong */}
                   {!isCorrect && showCorrectAnswer && (
                     <div className="mt-3 pt-3 border-t border-red-200 dark:border-red-800">
                       <p className="text-sm text-red-700 dark:text-red-400">
@@ -316,13 +261,6 @@ export default function PracticeQuestion({
                         <span className="font-mono">{correctAnswer}</span>
                       </p>
                     </div>
-                  )}
-
-                  {/* Already earned XP message */}
-                  {isCorrect && xpAwarded === 0 && (
-                    <p className="mt-2 text-sm text-green-600 dark:text-green-400">
-                      You can still practice, but XP is only awarded once per question.
-                    </p>
                   )}
                 </div>
               </div>
@@ -333,4 +271,3 @@ export default function PracticeQuestion({
     </div>
   );
 }
-

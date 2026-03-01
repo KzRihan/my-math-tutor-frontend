@@ -1,4 +1,4 @@
-// Dummy user data
+﻿// Dummy user data
 export const currentUser = {
   id: "user-001",
   email: "john.doe@example.com",
@@ -25,12 +25,7 @@ export const userStats = {
   totalTopicsCompleted: 8,
   totalLessonsCompleted: 42,
   averageAccuracy: 0.78,
-  rankPercentile: 85,
-  xpPoints: 4580,
-  level: 15,
-  levelProgress: 0.65, // 65% to next level
-  nextLevelXp: 5000
-};
+  rankPercentile: 85,};
 
 export const recentActivity = [
   {
@@ -38,92 +33,25 @@ export const recentActivity = [
     type: "lesson_completed",
     title: "Completed: Equivalent Fractions",
     topicId: "fractions",
-    timestamp: "2024-12-19T08:15:00Z",
-    xpEarned: 50
-  },
+    timestamp: "2024-12-19T08:15:00Z",  },
   {
     id: "act-2",
     type: "problem_solved",
     title: "Solved 5 practice problems",
     topicId: "algebra-basics",
-    timestamp: "2024-12-19T07:45:00Z",
-    xpEarned: 25
-  },
+    timestamp: "2024-12-19T07:45:00Z",  },
   {
     id: "act-4",
     type: "topic_mastered",
     title: "Mastered: Counting & Numbers",
     topicId: "counting",
-    timestamp: "2024-12-18T15:30:00Z",
-    xpEarned: 200
-  },
+    timestamp: "2024-12-18T15:30:00Z",  },
   {
     id: "act-5",
     type: "lesson_completed",
     title: "Completed: Introduction to Variables",
     topicId: "algebra-basics",
-    timestamp: "2024-12-18T14:20:00Z",
-    xpEarned: 50
-  }
-];
-
-export const achievements = [
-  {
-    id: "ach-1",
-    title: "First Steps",
-    description: "Complete your first lesson",
-    icon: "🎯",
-    unlocked: true,
-    unlockedAt: "2024-09-15T11:00:00Z"
-  },
-  {
-    id: "ach-2",
-    title: "Problem Solver",
-    description: "Solve 100 problems",
-    icon: "🧩",
-    unlocked: true,
-    unlockedAt: "2024-10-20T14:30:00Z"
-  },
-  {
-    id: "ach-4",
-    title: "Math Master",
-    description: "Master 5 topics",
-    icon: "🏆",
-    unlocked: true,
-    unlockedAt: "2024-12-10T16:45:00Z"
-  },
-  {
-    id: "ach-5",
-    title: "Perfect Score",
-    description: "Get 100% on 10 practice sessions",
-    icon: "⭐",
-    unlocked: false,
-    progress: 0.7
-  },
-  {
-    id: "ach-6",
-    title: "Night Owl",
-    description: "Study after 10 PM",
-    icon: "🦉",
-    unlocked: true,
-    unlockedAt: "2024-09-22T22:15:00Z"
-  },
-  {
-    id: "ach-7",
-    title: "Calculus Champion",
-    description: "Master all calculus topics",
-    icon: "∫",
-    unlocked: false,
-    progress: 0.3
-  },
-  {
-    id: "ach-8",
-    title: "Speed Demon",
-    description: "Solve 10 problems in under 5 minutes",
-    icon: "⚡",
-    unlocked: false,
-    progress: 0.5
-  }
+    timestamp: "2024-12-18T14:20:00Z",  }
 ];
 
 export const progressByTopic = [
@@ -145,3 +73,4 @@ export const weeklyStudyData = [
   { day: "Sat", minutes: 20 },
   { day: "Sun", minutes: 35 }
 ];
+

@@ -39,7 +39,7 @@ export default function Sidebar() {
   // Get actual user data from Redux (fallback)
   const reduxUser = useSelector((state) => state.auth.user);
   
-  // Fetch latest user data from API for real-time XP updates
+  // Fetch latest user data from API
   const { data: userData } = useGetMeQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
@@ -100,17 +100,6 @@ export default function Sidebar() {
 
   const profileImageUrl = getProfileImageUrl();
 
-  // Calculate level and XP progress (500 XP per level based on backend config)
-  const level = user?.level || 1;
-  const xpPoints = user?.xpPoints || 0;
-  const xpPerLevel = 500;
-  const xpForCurrentLevel = (level - 1) * xpPerLevel;
-  const xpForNextLevel = level * xpPerLevel;
-  const levelProgress = xpForNextLevel > xpForCurrentLevel 
-    ? (xpPoints - xpForCurrentLevel) / (xpForNextLevel - xpForCurrentLevel)
-    : 0;
-  const xpToNextLevel = Math.max(0, xpForNextLevel - xpPoints);
-
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-64 bg-background border-r border-[var(--card-border)] flex flex-col z-40">
       {/* Logo */}
@@ -144,25 +133,6 @@ export default function Sidebar() {
           );
         })}
       </nav>
-
-      {/* XP Progress */}
-      <div className="px-4 py-4">
-        <div className="glass-card p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-foreground-secondary">Level {level}</span>
-            <span className="text-xs text-primary-500 font-semibold">{xpPoints} XP</span>
-          </div>
-          <div className="progress-bar h-2 mb-2">
-            <div
-              className="progress-bar-fill"
-              style={{ width: `${Math.max(0, Math.min(100, levelProgress * 100))}%` }}
-            />
-          </div>
-          <p className="text-xs text-foreground-secondary">
-            {xpToNextLevel > 0 ? `${xpToNextLevel} XP to Level ${level + 1}` : 'Max level reached!'}
-          </p>
-        </div>
-      </div>
 
       {/* Bottom Navigation */}
       <div className="p-4 space-y-1 border-t border-[var(--card-border)]">

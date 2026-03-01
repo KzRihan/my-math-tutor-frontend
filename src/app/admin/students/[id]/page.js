@@ -235,15 +235,7 @@ export default function StudentDetailPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div className="glass-card p-4 text-center">
-          <p className="text-3xl font-bold text-primary-500">Lvl {student.level || 1}</p>
-          <p className="text-xs text-foreground-secondary">Current Level</p>
-        </div>
-        <div className="glass-card p-4 text-center">
-          <p className="text-3xl font-bold">{student.xpPoints || 0}</p>
-          <p className="text-xs text-foreground-secondary">XP Points</p>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="glass-card p-4 text-center">
           <p className="text-3xl font-bold text-success">{student.avgQuizScore || 0}%</p>
           <p className="text-xs text-foreground-secondary">Avg Quiz Score</p>

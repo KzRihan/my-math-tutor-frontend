@@ -10,7 +10,7 @@ import {
   useGetQuizReviewStatsQuery 
 } from '@/store/adminApi';
 import { useToast } from '@/components/providers/ToastProvider';
-import { FaCheckCircle, FaTimesCircle, FaSpinner, FaClock, FaTrophy } from 'react-icons/fa';
+import { FaCheckCircle, FaTimesCircle, FaSpinner, FaClock } from 'react-icons/fa';
 import Input from '@/components/ui/Input';
 
 export default function QuizReviewPage() {
@@ -34,16 +34,14 @@ export default function QuizReviewPage() {
     pending: 0,
     approved: 0,
     rejected: 0,
-    totalXP: 0,
   };
 
-  const handleReview = async (responseId, isCorrect, correctAnswer = '', xpAwarded = null, adminNotes = '') => {
+  const handleReview = async (responseId, isCorrect, correctAnswer = '', adminNotes = '') => {
     try {
       const result = await reviewQuizAnswer({
         responseId,
         isCorrect,
         correctAnswer: correctAnswer || undefined,
-        xpAwarded: xpAwarded || undefined,
         adminNotes: adminNotes || undefined,
       }).unwrap();
 
@@ -117,10 +115,10 @@ export default function QuizReviewPage() {
           <CardContent className="py-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-foreground-secondary">Total XP Awarded</p>
-                <p className="text-2xl font-bold text-primary-600">{stats.totalXP}</p>
+                <p className="text-sm text-foreground-secondary">Total Reviewed</p>
+                <p className="text-2xl font-bold text-primary-600">{(stats.approved || 0) + (stats.rejected || 0)}</p>
               </div>
-              <FaTrophy className="text-3xl text-primary-500" />
+              <FaCheckCircle className="text-3xl text-primary-500" />
             </div>
           </CardContent>
         </Card>
@@ -186,7 +184,6 @@ export default function QuizReviewPage() {
 function QuizResponseCard({ response, onReview, isReviewing }) {
   const [isCorrect, setIsCorrect] = useState(true);
   const [correctAnswer, setCorrectAnswer] = useState('');
-  const [xpAwarded, setXpAwarded] = useState('');
   const [adminNotes, setAdminNotes] = useState('');
   const [showReviewForm, setShowReviewForm] = useState(false);
 
@@ -198,14 +195,12 @@ function QuizResponseCard({ response, onReview, isReviewing }) {
       response._id || response.id,
       isCorrect,
       correctAnswer,
-      xpAwarded ? parseInt(xpAwarded) : null,
       adminNotes
     );
     setShowReviewForm(false);
     // Reset form
     setIsCorrect(true);
     setCorrectAnswer('');
-    setXpAwarded('');
     setAdminNotes('');
   };
 
@@ -238,7 +233,7 @@ function QuizResponseCard({ response, onReview, isReviewing }) {
       </div>
 
       <div className="bg-white dark:bg-neutral-800 p-4 rounded-lg mb-4">
-        <p className="text-sm font-medium text-foreground-secondary mb-1">Student's Answer:</p>
+        <p className="text-sm font-medium text-foreground-secondary mb-1">Student&apos;s Answer:</p>
         <p className="text-lg font-mono bg-neutral-100 dark:bg-neutral-900 p-3 rounded">
           {response.userAnswer}
         </p>
@@ -262,17 +257,6 @@ function QuizResponseCard({ response, onReview, isReviewing }) {
               value={correctAnswer}
               onChange={(e) => setCorrectAnswer(e.target.value)}
               placeholder="Enter the correct answer..."
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">XP to Award (optional, auto-calculated if not provided):</label>
-            <Input
-              type="number"
-              value={xpAwarded}
-              onChange={(e) => setXpAwarded(e.target.value)}
-              placeholder="Leave empty for auto-calculation"
-              min="0"
             />
           </div>
 
@@ -318,7 +302,7 @@ function QuizResponseCard({ response, onReview, isReviewing }) {
               {isCorrect ? (
                 <>
                   <FaCheckCircle className="mr-2" />
-                  Approve & Award XP
+                  Approve
                 </>
               ) : (
                 <>
@@ -333,7 +317,6 @@ function QuizResponseCard({ response, onReview, isReviewing }) {
                 setShowReviewForm(false);
                 setIsCorrect(true);
                 setCorrectAnswer('');
-                setXpAwarded('');
                 setAdminNotes('');
               }}
               disabled={isReviewing}

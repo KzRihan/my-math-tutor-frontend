@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -6,7 +6,6 @@ import Image from 'next/image';
 import Card, { CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import Badge from '@/components/ui/Badge';
 import { getInitials } from '@/lib/utils';
 import { useTheme } from '@/components/providers/ThemeProvider';
 import { useGetMeQuery, useUpdateProfileMutation } from '@/store/userApi';
@@ -14,12 +13,8 @@ import { useLogoutMutation } from '@/store/authApi';
 import { useSelector, useDispatch } from 'react-redux';
 import { setUser, logout } from '@/store/authSlice';
 import { useToast } from '@/components/providers/ToastProvider';
+import { FaUser, FaCog, FaCamera, FaCheck, FaSun, FaMoon, FaDesktop } from 'react-icons/fa';
 
-const LEVELS = [
-  { id: 'primary', label: 'Primary', grades: '1-5', icon: '⭐', defaultLevel: 1 },
-  { id: 'secondary', label: 'Secondary', grades: '6-10', icon: '🚀', defaultLevel: 6 },
-  { id: 'college', label: 'College', grades: '11+', icon: '🎓', defaultLevel: 11 },
-];
 
 const SERVER_BASE_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:8001';
 
@@ -48,7 +43,6 @@ export default function SettingsPage() {
     firstName: '',
     lastName: '',
   });
-  const [selectedLevel, setSelectedLevel] = useState(null);
 
   // Initialize form state when user data is available
   useEffect(() => {
@@ -57,7 +51,6 @@ export default function SettingsPage() {
         firstName: user.firstName || '',
         lastName: user.lastName || '',
       });
-      setSelectedLevel(LEVELS.find(l => l.id === user.learnLevel) || null);
     }
   }, [user]);
 
@@ -115,7 +108,7 @@ export default function SettingsPage() {
         dispatch(setUser(response.data));
         setSelectedFile(null);
         setImagePreview(null);
-        toast.success('Profile updated successfully! 🎉');
+        toast.success('Profile updated successfully!');
       }
     } catch (error) {
       console.error('Failed to update profile:', error);
@@ -123,22 +116,6 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSaveLevel = async () => {
-    if (!selectedLevel) return;
-    try {
-      const response = await updateProfile({
-        learnLevel: selectedLevel.id,
-        level: selectedLevel.defaultLevel,
-      }).unwrap();
-      if (response.success) {
-        dispatch(setUser(response.data));
-        toast.success('Learning level updated!');
-      }
-    } catch (error) {
-      console.error('Failed to update learning level:', error);
-      toast.error('Failed to update learning level.');
-    }
-  };
 
   const handleLogout = async () => {
     if (isLoggingOut) return;
@@ -156,8 +133,8 @@ export default function SettingsPage() {
   };
 
   const tabs = [
-    { id: 'profile', label: 'Profile', icon: '👤' },
-    { id: 'preferences', label: 'Preferences', icon: '⚙️' },
+    { id: 'profile', label: 'Profile', icon: FaUser },
+    { id: 'preferences', label: 'Preferences', icon: FaCog },
   ];
 
   if (isLoading) {
@@ -176,7 +153,10 @@ export default function SettingsPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <h1 className="text-2xl lg:text-3xl font-display font-bold mb-2">
-          Settings ⚙️
+          <span className="inline-flex items-center gap-2">
+            <FaCog className="text-primary-500" />
+            Settings
+          </span>
         </h1>
         <div className="sm:text-right">
           <p className="text-foreground-secondary mb-3">
@@ -206,7 +186,7 @@ export default function SettingsPage() {
                   : 'hover:bg-neutral-100 dark:hover:bg-neutral-800'
                   }`}
               >
-                <span>{tab.icon}</span>
+                <tab.icon className="w-4 h-4" />
                 <span className="font-medium">{tab.label}</span>
               </button>
             ))}
@@ -251,7 +231,7 @@ export default function SettingsPage() {
                       )}
                       {/* Overlay on hover */}
                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <span className="text-white text-xl">📷</span>
+                        <FaCamera className="text-white text-xl" />
                       </div>
                     </button>
                     <div>
@@ -263,7 +243,10 @@ export default function SettingsPage() {
                       </p>
                       {selectedFile && (
                         <p className="text-xs text-primary-500 mt-1">
-                          ✓ New image selected - click Save to apply
+                          <span className="inline-flex items-center gap-1">
+                            <FaCheck />
+                            New image selected - click Save to apply
+                          </span>
                         </p>
                       )}
                     </div>
@@ -296,40 +279,6 @@ export default function SettingsPage() {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Learning Level</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-foreground-secondary">
-                    Your learning level is determined by your performance and cannot be changed manually.
-                  </p>
-                  <div className="grid gap-3">
-                    {LEVELS.map((level) => (
-                      <div
-                        key={level.id}
-                        className={`p-4 rounded-xl border-2 ${user?.learnLevel === level.id
-                          ? 'border-primary-500 bg-primary-50 dark:bg-primary-950'
-                          : 'border-[var(--card-border)] opacity-50'
-                          }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-2xl">{level.icon}</span>
-                          <div className="flex-1">
-                            <p className="font-semibold">{level.label}</p>
-                            <p className="text-sm text-foreground-secondary">
-                              Grades {level.grades}
-                            </p>
-                          </div>
-                          {user?.learnLevel === level.id && (
-                            <Badge variant="primary">Current</Badge>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
             </>
           )}
 
@@ -342,9 +291,9 @@ export default function SettingsPage() {
                 <CardContent>
                   <div className="grid grid-cols-3 gap-4">
                     {[
-                      { value: 'light', label: 'Light', icon: '☀️' },
-                      { value: 'dark', label: 'Dark', icon: '🌙' },
-                      { value: 'system', label: 'System', icon: '💻' },
+                      { value: 'light', label: 'Light', icon: FaSun },
+                      { value: 'dark', label: 'Dark', icon: FaMoon },
+                      { value: 'system', label: 'System', icon: FaDesktop },
                     ].map((themeOption) => (
                       <button
                         key={themeOption.value}
@@ -354,7 +303,7 @@ export default function SettingsPage() {
                           : 'border-[var(--card-border)] hover:border-primary-300'
                           }`}
                       >
-                        <span className="text-2xl">{themeOption.icon}</span>
+                        <themeOption.icon className="text-2xl mx-auto" />
                         <p className="font-medium mt-2">{themeOption.label}</p>
                       </button>
                     ))}

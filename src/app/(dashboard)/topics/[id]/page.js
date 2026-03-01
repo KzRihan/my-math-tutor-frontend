@@ -6,20 +6,19 @@ import Card, { CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Progress from '@/components/ui/Progress';
-import Badge, { DifficultyBadge, StatusBadge } from '@/components/ui/Badge';
+import Badge, { StatusBadge } from '@/components/ui/Badge';
 import { useGetPublishedTopicQuery, useGetPublishedTopicsQuery } from '@/store/topicApi';
 import { 
     useGetEnrollmentQuery,
     useEnrollInTopicMutation,
     useUpdateLessonProgressMutation
 } from '@/store/enrollmentApi';
-import { 
+import {
     useGenerateLessonsMutation,
     useSaveLessonsMutation,
     useGenerateLessonContentMutation,
     useSaveLessonContentMutation
 } from '@/store/adminApi';
-import { useGetMeQuery } from '@/store/userApi';
 import { formatDuration } from '@/lib/utils';
 import { useToast } from '@/components/providers/ToastProvider';
 import EnrollmentModal from '@/components/modals/EnrollmentModal';
@@ -61,7 +60,6 @@ export default function TopicDetailPage() {
     const { data: enrollmentData, isLoading: isLoadingEnrollment } = useGetEnrollmentQuery(params.id, {
         skip: !params.id, // Skip if no topic ID
     });
-    const { data: userData } = useGetMeQuery();
     const [enrollInTopic, { isLoading: isEnrolling }] = useEnrollInTopicMutation();
     const [generateLessons] = useGenerateLessonsMutation();
     const [saveLessons] = useSaveLessonsMutation();
@@ -73,11 +71,6 @@ export default function TopicDetailPage() {
     const lessons = topic?.lessons || [];
     const enrollment = enrollmentData?.data;
     const isEnrolled = !!enrollment;
-    const user = userData?.data;
-    const userLearnLevel = user?.learnLevel;
-    
-    // Check if user can enroll in this topic
-    const canEnroll = !userLearnLevel || userLearnLevel === topic?.gradeBand;
 
     const clampNumber = (value, min, max) => {
         const parsed = Number(value);
@@ -273,7 +266,6 @@ export default function TopicDetailPage() {
                             <div className="flex-1">
                                 <div className="flex items-center gap-3 mb-3">
                                     <StatusBadge status={topic.status} />
-                                    <DifficultyBadge level={topic.difficulty} />
                                 </div>
                                 <h1 className="text-3xl font-display font-black mb-3">{topic.title}</h1>
                                 <p className="text-foreground-secondary text-lg mb-4">{topic.subtitle || 'Explore this topic to learn more.'}</p>
@@ -309,38 +301,13 @@ export default function TopicDetailPage() {
                             </div>
                         ) : !isEnrolled && lessons.length > 0 ? (
                             <div className="mt-8">
-                                {canEnroll ? (
-                                    <Button 
-                                        className="w-full btn-lg font-bold"
-                                        onClick={() => setShowEnrollmentModal(true)}
-                                    >
-                                        <FaRocket className="text-lg mr-2" />
-                                        Start Learning
-                                    </Button>
-                                ) : (
-                                    <div className="space-y-3">
-                                        <div className="p-4 rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
-                                            <div className="flex items-center gap-3">
-                                                <FaLock className="text-neutral-400 dark:text-neutral-500 text-xl" />
-                                                <div className="flex-1">
-                                                    <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                                                        This topic is for {topic?.gradeBand || 'another'} level
-                                                    </p>
-                                                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                                                        You can only enroll in {userLearnLevel || 'your'} level topics
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <Button 
-                                            className="w-full btn-lg font-bold"
-                                            disabled
-                                        >
-                                            <FaLock className="text-lg mr-2" />
-                                            Enrollment Restricted
-                                        </Button>
-                                    </div>
-                                )}
+                                <Button 
+                                    className="w-full btn-lg font-bold"
+                                    onClick={() => setShowEnrollmentModal(true)}
+                                >
+                                    <FaRocket className="text-lg mr-2" />
+                                    Start Learning
+                                </Button>
                             </div>
                         ) : (
                             <div className="mt-8">
@@ -563,26 +530,14 @@ export default function TopicDetailPage() {
 
                                                 {/* Action Button */}
                                                 {!isEnrolled && !isLocked && hasContent && (
-                                                    canEnroll ? (
-                                                        <Button
-                                                            variant="secondary"
-                                                            className="font-bold"
-                                                            onClick={() => setShowEnrollmentModal(true)}
-                                                        >
-                                                            <FaLock className="mr-2" />
-                                                            Enroll to Start
-                                                        </Button>
-                                                    ) : (
-                                                        <Button
-                                                            variant="secondary"
-                                                            className="font-bold"
-                                                            disabled
-                                                            title={`You can only enroll in ${userLearnLevel || 'your'} level topics`}
-                                                        >
-                                                            <FaLock className="mr-2" />
-                                                            Enrollment Restricted
-                                                        </Button>
-                                                    )
+                                                    <Button
+                                                        variant="secondary"
+                                                        className="font-bold"
+                                                        onClick={() => setShowEnrollmentModal(true)}
+                                                    >
+                                                        <FaLock className="mr-2" />
+                                                        Enroll to Start
+                                                    </Button>
                                                 )}
                                                 {isEnrolled && !isLocked && hasContent && (
                                                     <Link href={`/topics/${topic.id}/lesson/${lesson._id || lesson.id || lesson.order}`}>
@@ -769,7 +724,7 @@ export default function TopicDetailPage() {
 
             {/* Enrollment Modal */}
             <EnrollmentModal
-                isOpen={showEnrollmentModal && canEnroll}
+                isOpen={showEnrollmentModal}
                 onClose={() => setShowEnrollmentModal(false)}
                 topic={topic}
                 onEnroll={handleEnroll}

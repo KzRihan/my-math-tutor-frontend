@@ -5,12 +5,11 @@ import Link from 'next/link';
 import Card, { CardContent } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Progress from '@/components/ui/Progress';
-import Badge, { DifficultyBadge, StatusBadge } from '@/components/ui/Badge';
+import Badge, { StatusBadge } from '@/components/ui/Badge';
 import { useGetPublishedTopicsQuery } from '@/store/topicApi';
 import { useGetUserEnrollmentsQuery } from '@/store/enrollmentApi';
-import { useGetMeQuery } from '@/store/userApi';
 import { formatDuration } from '@/lib/utils';
-import { FaBook, FaClock, FaSpinner, FaCheckCircle, FaLock } from 'react-icons/fa';
+import { FaBook, FaClock, FaSpinner, FaCheckCircle } from 'react-icons/fa';
 import { HiInbox } from 'react-icons/hi2';
 
 const gradeBands = [
@@ -27,14 +26,6 @@ export default function TopicsPage() {
   });
   const { data: enrollmentsData } = useGetUserEnrollmentsQuery();
 
-  const { data: userData } = useGetMeQuery(undefined, {
-    refetchOnMountOrArgChange: true,
-  });
-  
-  // Use API data if available, otherwise fallback to Redux
-  const user = userData?.data;
-  const userLearnLevel = user?.learnLevel;
-
   const topics = data?.data || [];
   const enrollments = enrollmentsData?.data || [];
   const filteredTopics = topics;
@@ -44,14 +35,6 @@ export default function TopicsPage() {
   enrollments.forEach((enrollment) => {
     enrollmentMap.set(enrollment.topicId, enrollment);
   });
-
-  // Helper function to check if user can enroll in a topic
-  const canEnroll = (topicGradeBand) => {
-    // If user has no learnLevel set, allow enrollment (backward compatibility)
-    if (!userLearnLevel) return true;
-    // User can only enroll in topics matching their learnLevel
-    return userLearnLevel === topicGradeBand;
-  };
 
   return (
     <div className="p-6 lg:p-8 space-y-8">
@@ -168,24 +151,9 @@ export default function TopicsPage() {
                               {completedLessons} of {topic.lessonsCount || 0} lessons completed
                             </p>
                           </div>
-                        ) : !canEnroll(topic.gradeBand) ? (
-                          <div className="mt-auto">
-                            <div className="flex items-center justify-between p-3 rounded-lg bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
-                              <div className="flex items-center gap-2">
-                                <FaLock className="text-neutral-400 dark:text-neutral-500 text-sm" />
-                                <span className="text-xs text-neutral-600 dark:text-neutral-400 font-medium">
-                                  {userLearnLevel ? `Available for ${userLearnLevel} level` : 'Not available'}
-                                </span>
-                              </div>
-                            </div>
-                            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2 text-center">
-                              You can only enroll in {userLearnLevel || 'your'} level topics
-                            </p>
-                          </div>
                         ) : (
                           <div className="mt-auto">
-                            <div className="flex items-center justify-between">
-                              <DifficultyBadge level={topic.difficulty} />
+                            <div className="flex items-center justify-end">
                               <span className="text-sm text-primary-500 font-medium flex items-center gap-1">
                                 Start Learning →
                               </span>
@@ -203,7 +171,7 @@ export default function TopicsPage() {
               <HiInbox className="text-6xl mb-4 mx-auto text-foreground-secondary" />
               <h3 className="text-xl font-semibold mb-2">No topics found</h3>
               <p className="text-foreground-secondary mb-4">
-                Try selecting a different grade level
+                Try selecting a different grade band
               </p>
             </div>
           )}

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useSelector } from 'react-redux';
 import Link from 'next/link';
@@ -7,7 +7,7 @@ import Button from '@/components/ui/Button';
 import Progress, { CircularProgress } from '@/components/ui/Progress';
 import Badge from '@/components/ui/Badge';
 import { useGetUserProgressQuery } from '@/store/userApi';
-import RecentXPActivity from '@/components/practice/RecentXPActivity';
+import { FaRobot, FaArrowRight, FaBook, FaCamera, FaComments } from 'react-icons/fa';
 
 export default function DashboardPage() {
   const { user } = useSelector((state) => state.auth);
@@ -83,15 +83,15 @@ export default function DashboardPage() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl lg:text-3xl font-display font-bold">
-            Welcome back, {displayFirstName}! 👋
+            Welcome back, {displayFirstName}!
           </h1>
           <p className="text-foreground-secondary mt-1">
-            Ready to continue your math journey? Let's keep the momentum going!
+            Ready to continue your math journey? Let&apos;s keep the momentum going!
           </p>
         </div>
         <Link href="/solve">
           <Button size="lg">
-            <span className="mr-2">🤖</span>
+            <FaRobot className="mr-2" />
             Start Learning
           </Button>
         </Link>
@@ -136,7 +136,7 @@ export default function DashboardPage() {
       {/* Main Content Grid */}
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Continue Learning */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-3 space-y-6">
           {/* Weekly Progress */}
           <Card>
             <CardHeader>
@@ -186,7 +186,9 @@ export default function DashboardPage() {
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Continue Learning</CardTitle>
               <Link href="/topics" className="text-sm text-primary-500 hover:text-primary-600 font-medium">
-                View All →
+                <span className="inline-flex items-center gap-1">
+                  View All <FaArrowRight className="text-xs" />
+                </span>
               </Link>
             </CardHeader>
             <CardContent>
@@ -199,7 +201,7 @@ export default function DashboardPage() {
                       className="flex items-center gap-4 p-4 rounded-xl bg-neutral-50 dark:bg-neutral-800/50 hover:bg-primary-50 dark:hover:bg-neutral-700 hover:shadow-md transition-all"
                     >
                       <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-2xl">
-                        {enrollment.topic?.icon || '📚'}
+                        {enrollment.topic?.icon || <FaBook />}
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
@@ -232,7 +234,7 @@ export default function DashboardPage() {
               <Card interactive className="h-full group">
                 <CardContent className="flex flex-col items-center text-center py-6">
                   <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform">
-                    📸
+                    <FaCamera />
                   </div>
                   <h3 className="font-semibold mb-1">Snap a Problem</h3>
                   <p className="text-sm text-foreground-secondary">
@@ -245,7 +247,7 @@ export default function DashboardPage() {
               <Card interactive className="h-full group">
                 <CardContent className="flex flex-col items-center text-center py-6">
                   <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform">
-                    💬
+                    <FaComments />
                   </div>
                   <h3 className="font-semibold mb-1">Ask AI Tutor</h3>
                   <p className="text-sm text-foreground-secondary">
@@ -257,32 +259,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Activity Sidebar */}
-        <div className="space-y-6">
-          {/* Recent XP Activity */}
-          <RecentXPActivity limit={5} />
-
-          {/* Level Progress */}
-          <Card className="gradient-bg text-white">
-            <CardContent className="py-6">
-              <div className="text-center">
-                <div className="w-20 h-20 mx-auto rounded-full bg-white/20 flex items-center justify-center text-3xl mb-4">
-                  🏆
-                </div>
-                <h3 className="font-bold text-lg mb-1">Level {stats?.level || 1}</h3>
-                <p className="text-white/80 text-sm mb-4">
-                  {stats?.xpPoints || 0} / {stats?.nextLevelXp || 500} XP
-                </p>
-                <div className="h-3 rounded-full bg-neutral-200 dark:bg-neutral-800 overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-primary-500 to-primary-600 rounded-full transition-all"
-                    style={{ width: `${(stats?.levelProgress || 0) * 100}%` }}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </div>
   );

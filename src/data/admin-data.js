@@ -1,4 +1,4 @@
-// Admin Panel Dummy Data
+﻿// Admin Panel Dummy Data
 
 // Admin User
 export const adminUser = {
@@ -40,7 +40,7 @@ export const GRADE_BANDS = {
   COLLEGE: { id: 'college', label: 'College', color: 'info' },
 };
 
-// Difficulty Levels
+// Difficulty Scale
 export const DIFFICULTY_LEVELS = {
   EASY: { id: 'easy', label: 'Easy', color: 'success' },
   MEDIUM: { id: 'medium', label: 'Medium', color: 'warning' },
@@ -337,10 +337,7 @@ export const students = [
     lastActive: '2025-12-24T15:30:00Z',
     enrolledTopics: ['topic-001', 'topic-002', 'topic-003'],
     completedTopics: ['topic-002'],
-    totalTimeSpent: 2340, // minutes
-    xpPoints: 1850,
-    level: 5,
-    avgQuizScore: 84,
+    totalTimeSpent: 2340, // minutes    avgQuizScore: 84,
     status: 'active',
   },
   {
@@ -354,10 +351,7 @@ export const students = [
     lastActive: '2025-12-24T14:00:00Z',
     enrolledTopics: ['topic-001', 'topic-006'],
     completedTopics: ['topic-001'],
-    totalTimeSpent: 1560,
-    xpPoints: 1420,
-    level: 4,
-    avgQuizScore: 91,
+    totalTimeSpent: 1560,    avgQuizScore: 91,
     status: 'active',
   },
   {
@@ -371,10 +365,7 @@ export const students = [
     lastActive: '2025-12-23T11:00:00Z',
     enrolledTopics: ['topic-002'],
     completedTopics: [],
-    totalTimeSpent: 480,
-    xpPoints: 620,
-    level: 2,
-    avgQuizScore: 72,
+    totalTimeSpent: 480,    avgQuizScore: 72,
     status: 'active',
   },
   {
@@ -388,10 +379,7 @@ export const students = [
     lastActive: '2025-12-20T09:00:00Z',
     enrolledTopics: ['topic-001', 'topic-003'],
     completedTopics: ['topic-001', 'topic-003'],
-    totalTimeSpent: 3200,
-    xpPoints: 2890,
-    level: 7,
-    avgQuizScore: 88,
+    totalTimeSpent: 3200,    avgQuizScore: 88,
     status: 'active',
   },
   {
@@ -405,10 +393,7 @@ export const students = [
     lastActive: '2025-12-15T10:00:00Z',
     enrolledTopics: ['topic-001'],
     completedTopics: [],
-    totalTimeSpent: 120,
-    xpPoints: 180,
-    level: 1,
-    avgQuizScore: 65,
+    totalTimeSpent: 120,    avgQuizScore: 65,
     status: 'inactive',
   },
 ];
@@ -421,7 +406,7 @@ export const activityLog = [
     message: 'AI generated 6 lessons for "Geometry Fundamentals"',
     timestamp: '2025-12-24T16:00:00Z',
     user: 'System Admin',
-    icon: '🤖',
+    icon: 'ðŸ¤–',
   },
   {
     id: 'act-002',
@@ -429,7 +414,7 @@ export const activityLog = [
     message: 'Topic "Quadratic Equations" was published',
     timestamp: '2025-12-24T14:30:00Z',
     user: 'System Admin',
-    icon: '✅',
+    icon: 'âœ…',
   },
   {
     id: 'act-003',
@@ -437,7 +422,7 @@ export const activityLog = [
     message: '15 new students enrolled in "Algebra Basics"',
     timestamp: '2025-12-24T12:00:00Z',
     user: 'System',
-    icon: '👥',
+    icon: 'ðŸ‘¥',
   },
   {
     id: 'act-004',
@@ -445,7 +430,7 @@ export const activityLog = [
     message: 'Lesson "Evaluating Expressions" marked as approved',
     timestamp: '2025-12-24T10:15:00Z',
     user: 'System Admin',
-    icon: '📝',
+    icon: 'ðŸ“',
   },
   {
     id: 'act-005',
@@ -453,7 +438,7 @@ export const activityLog = [
     message: '28 students completed quiz for "Fractions & Decimals"',
     timestamp: '2025-12-24T09:00:00Z',
     user: 'System',
-    icon: '📊',
+    icon: 'ðŸ“Š',
   },
   {
     id: 'act-006',
@@ -461,7 +446,7 @@ export const activityLog = [
     message: 'AI model updated to GPT-4 Turbo',
     timestamp: '2025-12-23T16:00:00Z',
     user: 'System Admin',
-    icon: '⚙️',
+    icon: 'âš™ï¸',
   },
 ];
 
@@ -520,3 +505,4 @@ export const adminNavItems = [
   { href: '/admin/analytics', label: 'Analytics', icon: 'analytics' },
   { href: '/admin/settings', label: 'Settings', icon: 'settings' },
 ];
+

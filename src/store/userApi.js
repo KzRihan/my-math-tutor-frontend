@@ -31,7 +31,7 @@ export const userApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ['User', 'UserProgress', 'UserXP'],
+  tagTypes: ['User', 'UserProgress'],
   endpoints: (builder) => ({
     /**
      * Get current user profile
@@ -39,8 +39,8 @@ export const userApi = createApi({
      */
     getMe: builder.query({
       query: () => '/me',
-      providesTags: ['User', 'UserXP'],
-      // Refetch when component mounts to get latest XP/level
+      providesTags: ['User'],
+      // Refetch when component mounts to get latest user profile data
       refetchOnMountOrArgChange: true,
     }),
 

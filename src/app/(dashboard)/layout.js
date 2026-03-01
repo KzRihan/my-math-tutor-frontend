@@ -5,7 +5,6 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import MobileNav from '@/components/layout/MobileNav';
-import LearningLevelModal from '@/components/modals/LearningLevelModal';
 import ThemeProvider from '@/components/providers/ThemeProvider';
 import { useGetMeQuery } from '@/store/userApi';
 import { logout } from '@/store/authSlice';
@@ -16,7 +15,7 @@ export default function DashboardLayout({ children }) {
     const router = useRouter();
     const [authChecked, setAuthChecked] = useState(false);
     // Fetch latest user data when on dashboard
-    const { data: userData, error } = useGetMeQuery(undefined, {
+    const { error } = useGetMeQuery(undefined, {
         skip: !isAuthenticated
     });
 
@@ -91,12 +90,6 @@ export default function DashboardLayout({ children }) {
         }
     }, [error, dispatch, router, authChecked]);
 
-    // Use current user from state or freshly fetched user
-    const currentUser = userData?.data || user;
-
-    // Show modal if user is logged in but hasn't set their learning level
-    const showLearningLevelModal = isAuthenticated && currentUser && !currentUser.learnLevel;
-
     // Show loading while checking auth
     if (!authChecked) {
         return (
@@ -124,9 +117,6 @@ export default function DashboardLayout({ children }) {
 
                 {/* Mobile Navigation */}
                 <MobileNav />
-
-                {/* Mandatory Learning Level Selection */}
-                <LearningLevelModal isOpen={showLearningLevelModal} user={user} />
 
             </div>
         </ThemeProvider>

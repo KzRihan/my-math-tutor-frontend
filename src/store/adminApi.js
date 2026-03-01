@@ -205,7 +205,7 @@ export const adminApi = createApi({
                 method: 'POST',
                 body: data,
             }),
-            invalidatesTags: ['QuizReview', 'User', 'UserXP'],
+            invalidatesTags: ['QuizReview', 'User'],
         }),
 
         /**

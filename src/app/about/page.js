@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import Card, { CardContent } from '@/components/ui/Card';
@@ -7,36 +7,37 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { APP_NAME } from '@/lib/constants';
 import DarkThemeEnforcer from '@/components/providers/DarkThemeEnforcer';
+import { FaBullseye, FaCamera, FaBrain, FaChartLine, FaBookOpen, FaGlobeAmericas, FaRobot, FaArrowRight } from 'react-icons/fa';
 
 export default function AboutPage() {
     const features = [
         {
-            icon: '🎯',
+            icon: FaBullseye,
             title: 'Personalized Learning',
             description: 'AI-powered tutoring adapts to your learning pace and style, ensuring you master every concept.'
         },
         {
-            icon: '📸',
+            icon: FaCamera,
             title: 'Instant Problem Solving',
             description: 'Snap a photo of any math problem and get step-by-step guidance instantly.'
         },
         {
-            icon: '🧠',
+            icon: FaBrain,
             title: 'Socratic Method',
             description: 'Learn through guided questions that help you discover solutions on your own.'
         },
         {
-            icon: '📊',
+            icon: FaChartLine,
             title: 'Progress Tracking',
             description: 'Monitor your growth with detailed analytics and personalized insights.'
         },
         {
-            icon: '🏆',
-            title: 'Gamified Experience',
-            description: 'Earn XP, unlock achievements, and compete on leaderboards while learning.'
+            icon: FaBookOpen,
+            title: 'Focused Practice',
+            description: 'Build mastery with guided practice sessions and clear learning feedback.'
         },
         {
-            icon: '🌍',
+            icon: FaGlobeAmericas,
             title: 'Learn Anywhere',
             description: 'Access your AI tutor 24/7 from any device, wherever you are.'
         }
@@ -69,7 +70,7 @@ export default function AboutPage() {
                                 </h1>
                                 <p className="text-xl text-foreground-secondary mb-8 leading-relaxed">
                                     {APP_NAME} is your personal AI mathematics tutor, designed to make learning math
-                                    engaging, effective, and accessible to everyone—from elementary students to college scholars.
+                                    engaging, effective, and accessible to everyone, from elementary students to college scholars.
                                 </p>
                                 <div className="flex flex-wrap gap-4 justify-center">
                                     <Link href="/register">
@@ -117,7 +118,7 @@ export default function AboutPage() {
                                 <p className="text-lg text-foreground-secondary leading-relaxed">
                                     We believe that every student deserves access to world-class mathematics education.
                                     Our AI-powered platform breaks down complex concepts into digestible lessons,
-                                    provides instant feedback, and adapts to each learner&apos;s unique needs—making math
+                                    provides instant feedback, and adapts to each learner&apos;s unique needs, making math
                                     mastery achievable for everyone.
                                 </p>
                             </div>
@@ -133,7 +134,7 @@ export default function AboutPage() {
                                     >
                                         <CardContent className="p-6">
                                             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform">
-                                                {feature.icon}
+                                                <feature.icon />
                                             </div>
                                             <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
                                             <p className="text-foreground-secondary leading-relaxed">
@@ -160,14 +161,14 @@ export default function AboutPage() {
 
                             <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
                                 {[
-                                    { step: '01', title: 'Capture', desc: 'Take a photo of your math problem or type it in', icon: '📸' },
-                                    { step: '02', title: 'Learn', desc: 'Get step-by-step guidance from your AI tutor', icon: '🤖' },
-                                    { step: '03', title: 'Master', desc: 'Practice similar problems and track your progress', icon: '🎯' }
+                                    { step: '01', title: 'Capture', desc: 'Take a photo of your math problem or type it in', icon: FaCamera },
+                                    { step: '02', title: 'Learn', desc: 'Get step-by-step guidance from your AI tutor', icon: FaRobot },
+                                    { step: '03', title: 'Master', desc: 'Practice similar problems and track your progress', icon: FaBullseye }
                                 ].map((item, idx) => (
                                     <div key={idx} className="relative">
                                         <Card variant="glassStrong" className="p-8 text-center h-full">
                                             <CardContent>
-                                                <div className="text-6xl mb-4">{item.icon}</div>
+                                                <item.icon className="text-6xl mb-4 mx-auto" />
                                                 <div className="text-primary-500 font-black text-sm mb-2">STEP {item.step}</div>
                                                 <h3 className="text-2xl font-bold mb-3">{item.title}</h3>
                                                 <p className="text-foreground-secondary">{item.desc}</p>
@@ -175,7 +176,7 @@ export default function AboutPage() {
                                         </Card>
                                         {idx < 2 && (
                                             <div className="hidden md:block absolute top-1/2 -right-4 text-4xl text-primary-400">
-                                                →
+                                                <FaArrowRight />
                                             </div>
                                         )}
                                     </div>

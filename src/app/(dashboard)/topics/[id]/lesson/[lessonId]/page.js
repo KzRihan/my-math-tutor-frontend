@@ -16,8 +16,6 @@ import { formatDuration } from '@/lib/utils';
 import { useToast } from '@/components/providers/ToastProvider';
 import LeaveWarningModal, { useLeaveWarning } from '@/components/modals/LeaveWarningModal';
 import PracticeQuestion from '@/components/practice/PracticeQuestion';
-import XPDisplay from '@/components/practice/XPDisplay';
-import UserXPBadge from '@/components/practice/UserXPBadge';
 import {
     FaBook,
     FaClock,
@@ -38,7 +36,6 @@ export default function LessonPage() {
     const router = useRouter();
     const toast = useToast();
     const [currentSection, setCurrentSection] = useState('concept');
-    const [questionResults, setQuestionResults] = useState({}); // Track question results for XP
     const [isComplete, setIsComplete] = useState(false);
     const [showLeaveWarning, setShowLeaveWarning] = useState(false);
     const [showTabSwitchWarning, setShowTabSwitchWarning] = useState(false);
@@ -433,17 +430,6 @@ export default function LessonPage() {
         );
     }
 
-    // Handle answer submission from PracticeQuestion component
-    const handleAnswerSubmitted = (result) => {
-        setQuestionResults(prev => ({
-            ...prev,
-            [result.questionIndex]: {
-                isCorrect: result.isCorrect,
-                xpAwarded: result.xpAwarded,
-            }
-        }));
-    };
-
     const handleComplete = async () => {
         if (!isEnrolled || !enrollment || !currentLesson) {
             toast.error('Please enroll in this topic first');
@@ -513,7 +499,6 @@ export default function LessonPage() {
                         </Link>
 
                         <div className="flex items-center gap-4">
-                            <UserXPBadge />
                             <span className="text-sm text-foreground-secondary">
                                 Lesson {currentLessonIndex + 1} of {sortedLessons.length}
                             </span>
@@ -683,12 +668,6 @@ export default function LessonPage() {
                 {/* Practice Section */}
                 {currentSection === 'practice' && (
                     <div className="space-y-6 animate-fade-in">
-                        {/* XP Display */}
-                        <XPDisplay
-                            topicId={params.id}
-                            lessonId={currentLesson._id?.toString() || currentLesson.id?.toString() || params.lessonId}
-                        />
-
                         <Card>
                             <CardHeader className="border-b border-[var(--card-border)] bg-neutral-50 dark:bg-neutral-800/50">
                                 <CardTitle className="flex items-center gap-3">
@@ -713,7 +692,6 @@ export default function LessonPage() {
                                                     lessonId={currentLesson._id?.toString() || currentLesson.id?.toString() || params.lessonId}
                                                     questionType="practice"
                                                     correctAnswer={exercise.answer || ''}
-                                                    onAnswerSubmitted={handleAnswerSubmitted}
                                                 />
                                             );
                                         })}
@@ -746,12 +724,6 @@ export default function LessonPage() {
                 {/* Quiz Section */}
                 {currentSection === 'quiz' && (
                     <div className="space-y-6 animate-fade-in">
-                        {/* XP Display */}
-                        <XPDisplay
-                            topicId={params.id}
-                            lessonId={currentLesson._id?.toString() || currentLesson.id?.toString() || params.lessonId}
-                        />
-
                         <Card>
                             <CardHeader className="border-b border-[var(--card-border)] bg-gradient-to-r from-purple-500/10 to-pink-500/10">
                                 <CardTitle className="flex items-center gap-3">
@@ -776,7 +748,6 @@ export default function LessonPage() {
                                                     lessonId={currentLesson._id?.toString() || currentLesson.id?.toString() || params.lessonId}
                                                     questionType="quiz"
                                                     correctAnswer={quizAnswer}
-                                                    onAnswerSubmitted={handleAnswerSubmitted}
                                                 />
                                             );
                                         })}

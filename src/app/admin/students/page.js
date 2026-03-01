@@ -1,10 +1,10 @@
-'use client';
+﻿'use client';
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useGetStudentListQuery } from '@/store/adminApi';
 import { cn } from '@/lib/utils';
-import { FaSpinner } from 'react-icons/fa';
+import { FaSpinner, FaDownload, FaEnvelope, FaUsers, FaCheckCircle, FaChartBar, FaClock } from 'react-icons/fa';
 
 export default function StudentsListPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -27,10 +27,12 @@ export default function StudentsListPage() {
     totalStudents: 0,
     activeStudents: 0,
     avgQuizScore: 0,
-    avgXPPoints: 0,
   };
   const total = data?.data?.total || 0;
   const totalPages = Math.ceil(total / limit);
+  const avgStudyTime = students.length > 0
+    ? Math.round(students.reduce((sum, student) => sum + (student.totalTimeSpent || 0), 0) / students.length)
+    : 0;
 
   // Filter students client-side for search (if needed as fallback)
   const filteredStudents = useMemo(() => {
@@ -103,11 +105,11 @@ export default function StudentsListPage() {
         </div>
         <div className="flex items-center gap-3">
           <button className="btn btn-secondary">
-            <span>📥</span>
+            <FaDownload />
             Export Data
           </button>
           <button className="btn btn-primary">
-            <span>📧</span>
+            <FaEnvelope />
             Send Announcement
           </button>
         </div>
@@ -118,7 +120,7 @@ export default function StudentsListPage() {
         <div className="glass-card p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center">
-              <span className="text-lg">👥</span>
+              <FaUsers className="text-lg" />
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.totalStudents}</p>
@@ -129,7 +131,7 @@ export default function StudentsListPage() {
         <div className="glass-card p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center">
-              <span className="text-lg">✅</span>
+              <FaCheckCircle className="text-lg" />
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.activeStudents}</p>
@@ -140,7 +142,7 @@ export default function StudentsListPage() {
         <div className="glass-card p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center">
-              <span className="text-lg">📊</span>
+              <FaChartBar className="text-lg" />
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.avgQuizScore}%</p>
@@ -151,11 +153,11 @@ export default function StudentsListPage() {
         <div className="glass-card p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-secondary-500/10 flex items-center justify-center">
-              <span className="text-lg">⭐</span>
+              <FaClock className="text-lg" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{stats.avgXPPoints}</p>
-              <p className="text-xs text-foreground-secondary">Avg XP Points</p>
+              <p className="text-2xl font-bold">{formatTime(avgStudyTime)}</p>
+              <p className="text-xs text-foreground-secondary">Avg Study Time</p>
             </div>
           </div>
         </div>
@@ -269,7 +271,7 @@ export default function StudentsListPage() {
                       <div className="text-sm">
                         <span className="font-medium">{student.enrolledTopicsCount || 0}</span>
                         <span className="text-foreground-secondary"> enrolled</span>
-                        <span className="text-foreground-secondary mx-1">·</span>
+                        <span className="text-foreground-secondary mx-1">-</span>
                         <span className="font-medium">{student.completedTopicsCount || 0}</span>
                         <span className="text-foreground-secondary"> completed</span>
                       </div>
@@ -278,7 +280,7 @@ export default function StudentsListPage() {
                       <div className="flex items-center gap-3">
                         <div className="text-sm">
                           <p><span className="font-medium">{student.avgQuizScore || 0}%</span> <span className="text-foreground-secondary">avg score</span></p>
-                          <p><span className="font-medium">Lvl {student.level || 1}</span> <span className="text-foreground-secondary">· {student.xpPoints || 0} XP</span></p>
+                          <p><span className="font-medium">{formatTime(student.totalTimeSpent || 0)}</span> <span className="text-foreground-secondary">study time</span></p>
                         </div>
                       </div>
                     </td>
@@ -350,3 +352,4 @@ export default function StudentsListPage() {
     </div>
   );
 }
+

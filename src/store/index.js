@@ -11,7 +11,6 @@ import { userApi } from './userApi';
 import { adminApi } from './adminApi';
 import { topicApi } from './topicApi';
 import { enrollmentApi } from './enrollmentApi';
-import { achievementApi } from './achievementApi';
 import { questionApi } from './questionApi';
 import authReducer from './authSlice';
 
@@ -29,7 +28,6 @@ export const store = configureStore({
     [adminApi.reducerPath]: adminApi.reducer,
     [topicApi.reducerPath]: topicApi.reducer,
     [enrollmentApi.reducerPath]: enrollmentApi.reducer,
-    [achievementApi.reducerPath]: achievementApi.reducer,
     [questionApi.reducerPath]: questionApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
@@ -39,7 +37,6 @@ export const store = configureStore({
       adminApi.middleware,
       topicApi.middleware,
       enrollmentApi.middleware,
-      achievementApi.middleware,
       questionApi.middleware
     ),
 });

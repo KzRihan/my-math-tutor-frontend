@@ -28,7 +28,7 @@ export const questionApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ['QuestionResponse', 'XP', 'UserXP'],
+  tagTypes: ['QuestionResponse'],
   endpoints: (builder) => ({
     /**
      * Submit answer to a practice question
@@ -40,35 +40,7 @@ export const questionApi = createApi({
         method: 'POST',
         body: data,
       }),
-      invalidatesTags: (result, error, arg) => [
-        'QuestionResponse',
-        { type: 'XP', id: `lesson-${arg.topicId}-${arg.lessonId}` },
-        { type: 'XP', id: `topic-${arg.topicId}` },
-        'UserXP', // Invalidate user XP to trigger refetch
-        'User', // Invalidate user data to update XP/level
-      ],
-    }),
-
-    /**
-     * Get lesson XP summary
-     * GET /questions/lesson/:topicId/:lessonId/summary
-     */
-    getLessonXPSummary: builder.query({
-      query: ({ topicId, lessonId }) => `/lesson/${topicId}/${lessonId}/summary`,
-      providesTags: (result, error, { topicId, lessonId }) => [
-        { type: 'XP', id: `lesson-${topicId}-${lessonId}` },
-      ],
-      // Refetch when component mounts or args change
-      refetchOnMountOrArgChange: true,
-    }),
-
-    /**
-     * Get XP configuration
-     * GET /questions/xp-config
-     */
-    getXPConfig: builder.query({
-      query: () => '/xp-config',
-      providesTags: ['XP'],
+      invalidatesTags: ['QuestionResponse'],
     }),
 
     /**
@@ -88,9 +60,7 @@ export const questionApi = createApi({
      */
     getTopicStats: builder.query({
       query: (topicId) => `/topic/${topicId}/stats`,
-      providesTags: (result, error, topicId) => [
-        { type: 'XP', id: `topic-${topicId}` },
-      ],
+      providesTags: ['QuestionResponse'],
       refetchOnMountOrArgChange: true,
     }),
   }),
@@ -99,8 +69,6 @@ export const questionApi = createApi({
 // Export hooks
 export const {
   useSubmitAnswerMutation,
-  useGetLessonXPSummaryQuery,
-  useGetXPConfigQuery,
   useGetUserHistoryQuery,
   useGetTopicStatsQuery,
 } = questionApi;
