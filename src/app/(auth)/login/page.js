@@ -7,7 +7,6 @@ import { useSelector, useDispatch } from 'react-redux';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Card from '@/components/ui/Card';
-import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
 import AppleSignInButton from '@/components/auth/AppleSignInButton';
 import { APP_NAME } from '@/lib/constants';
 import { useSigninMutation } from '@/store/authApi';
@@ -24,7 +23,6 @@ function LoginContent() {
     const [error, setError] = useState('');
     const justRegistered = searchParams.get('registered') === 'true';
     const passwordReset = searchParams.get('reset') === 'true';
-    const [showApple, setShowApple] = useState(false);
     const [isRedirecting, setIsRedirecting] = useState(false);
 
     // Check if already authenticated IMMEDIATELY on mount - synchronous check
@@ -78,17 +76,6 @@ function LoginContent() {
             router.replace('/dashboard');
         }
     }, [isAuthenticated, authLoading, router, isRedirecting]);
-
-    // Detect iOS on mount
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const userAgent = navigator.userAgent.toLowerCase();
-            const platform = navigator.platform?.toLowerCase() || '';
-            const isIOS = /iphone|ipad|ipod/.test(userAgent) ||
-                (platform === 'macintel' && navigator.maxTouchPoints > 1);
-            setShowApple(isIOS);
-        }
-    }, []);
 
     // RTK Query mutation hook
     const [signin, { isLoading, isSuccess, isError, error: apiError }] = useSigninMutation();
@@ -275,21 +262,8 @@ function LoginContent() {
                         </Button>
                     </form>
 
-                    {/* Divider */}
-                    <div className="relative my-8">
-                        <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-[var(--card-border)]" />
-                        </div>
-                        <div className="relative flex justify-center text-sm">
-                            <span className="px-4 bg-[var(--card-bg)] text-foreground-secondary">
-                                or continue with
-                            </span>
-                        </div>
-                    </div>
-
                     {/* Social Login */}
-                    <div className={showApple ? "grid grid-cols-2 gap-3" : "grid grid-cols-1 gap-3"}>
-                        <GoogleSignInButton className="w-full" />
+                    <div className="grid grid-cols-1 gap-3 mt-8">
                         <AppleSignInButton className="w-full" />
                     </div>
 

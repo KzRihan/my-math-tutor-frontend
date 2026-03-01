@@ -4,13 +4,19 @@ import { useState, useRef, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { useDispatch } from 'react-redux';
+import { useLogoutMutation } from '@/store/authApi';
+import { logout } from '@/store/authSlice';
 
 export default function AdminHeader() {
   const pathname = usePathname();
   const router = useRouter();
+  const dispatch = useDispatch();
+  const [logoutMutation] = useLogoutMutation();
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const userMenuRef = useRef(null);
   const notificationsRef = useRef(null);
 
@@ -51,9 +57,19 @@ export default function AdminHeader() {
   const breadcrumbs = generateBreadcrumbs();
 
   // Handle logout
-  const handleLogout = () => {
-    localStorage.removeItem('adminToken');
-    router.push('/admin/login');
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+
+    try {
+      await logoutMutation().unwrap();
+    } catch (error) {
+      console.warn('Admin logout API call failed, clearing local session anyway:', error);
+    }
+
+    dispatch(logout());
+    setShowUserMenu(false);
+    router.replace('/admin/login');
   };
 
   // Sample notifications
@@ -254,12 +270,18 @@ export default function AdminHeader() {
               <div className="border-t border-[var(--card-border)] py-1">
                 <button
                   onClick={handleLogout}
-                  className="flex items-center gap-3 px-3 py-2 text-sm text-error hover:bg-error/10 dark:hover:bg-error/20 transition-colors w-full text-left"
+                  disabled={isLoggingOut}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2 text-sm w-full text-left transition-colors',
+                    isLoggingOut
+                      ? 'text-foreground-secondary opacity-60 cursor-not-allowed'
+                      : 'text-error hover:bg-error/10 dark:hover:bg-error/20'
+                  )}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                   </svg>
-                  Sign Out
+                  {isLoggingOut ? 'Signing Out...' : 'Sign Out'}
                 </button>
               </div>
             </div>

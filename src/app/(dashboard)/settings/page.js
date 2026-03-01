@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Card, { CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -9,8 +10,9 @@ import Badge from '@/components/ui/Badge';
 import { getInitials } from '@/lib/utils';
 import { useTheme } from '@/components/providers/ThemeProvider';
 import { useGetMeQuery, useUpdateProfileMutation } from '@/store/userApi';
+import { useLogoutMutation } from '@/store/authApi';
 import { useSelector, useDispatch } from 'react-redux';
-import { setUser } from '@/store/authSlice';
+import { setUser, logout } from '@/store/authSlice';
 import { useToast } from '@/components/providers/ToastProvider';
 
 const LEVELS = [
@@ -22,6 +24,7 @@ const LEVELS = [
 const SERVER_BASE_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:8001';
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('profile');
   const { theme, setTheme } = useTheme();
   const dispatch = useDispatch();
@@ -29,10 +32,12 @@ export default function SettingsPage() {
   const fileInputRef = useRef(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Fetch user data from API
   const { data: userData, isLoading } = useGetMeQuery();
   const [updateProfile, { isLoading: isUpdating }] = useUpdateProfileMutation();
+  const [logoutMutation] = useLogoutMutation();
 
   // Get user from API or fallback to Redux state
   const reduxUser = useSelector((state) => state.auth.user);
@@ -135,6 +140,21 @@ export default function SettingsPage() {
     }
   };
 
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+
+    try {
+      await logoutMutation().unwrap();
+    } catch (error) {
+      console.warn('Logout API call failed, clearing local session anyway:', error);
+    }
+
+    dispatch(logout());
+    toast.success('Logged out successfully');
+    router.replace('/login');
+  };
+
   const tabs = [
     { id: 'profile', label: 'Profile', icon: '👤' },
     { id: 'preferences', label: 'Preferences', icon: '⚙️' },
@@ -154,13 +174,23 @@ export default function SettingsPage() {
   return (
     <div className="p-6 lg:p-8 space-y-8">
       {/* Header */}
-      <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <h1 className="text-2xl lg:text-3xl font-display font-bold mb-2">
           Settings ⚙️
         </h1>
-        <p className="text-foreground-secondary">
-          Manage your account and preferences
-        </p>
+        <div className="sm:text-right">
+          <p className="text-foreground-secondary mb-3">
+            Manage your account and preferences
+          </p>
+          <Button
+            variant="danger"
+            onClick={handleLogout}
+            loading={isLoggingOut}
+            className="w-full sm:w-auto sm:min-w-[140px]"
+          >
+            {isLoggingOut ? 'Signing Out...' : 'Sign Out'}
+          </Button>
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-4 gap-8">
