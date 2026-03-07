@@ -360,7 +360,7 @@ export default function GenerateContentPage() {
             <div>
               <h3 className="font-bold text-lg">{createdTopic.title}</h3>
               <p className="text-sm text-foreground-secondary">
-                Topic created successfully. It is now visible under Topics.
+                Topic created successfully. It is now visible under Topics for this account.
               </p>
             </div>
             <div className="flex gap-3">

@@ -19,6 +19,12 @@ export const topicApi = createApi({
     baseQuery: fetchBaseQuery({
         baseUrl: API_BASE_URL,
         prepareHeaders: (headers) => {
+            if (typeof window !== 'undefined') {
+                const token = localStorage.getItem('accessToken');
+                if (token) {
+                    headers.set('authorization', `Bearer ${token}`);
+                }
+            }
             headers.set('Content-Type', 'application/json');
             return headers;
         },

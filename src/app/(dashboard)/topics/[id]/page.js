@@ -36,7 +36,8 @@ import {
   FaRocket
 } from 'react-icons/fa';
 import { HiInbox } from 'react-icons/hi2';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSelector } from 'react-redux';
 
 export default function TopicDetailPage() {
     const params = useParams();
@@ -65,12 +66,27 @@ export default function TopicDetailPage() {
     const [saveLessons] = useSaveLessonsMutation();
     const [generateLessonContent] = useGenerateLessonContentMutation();
     const [saveLessonContent] = useSaveLessonContentMutation();
+    const currentUser = useSelector((state) => state.auth.user);
     
     const topic = topicData?.data;
     const allTopics = allTopicsData?.data || [];
     const lessons = topic?.lessons || [];
     const enrollment = enrollmentData?.data;
     const isEnrolled = !!enrollment;
+    const canManageTopic = Boolean(
+        currentUser &&
+        (
+            currentUser.role === 'admin' ||
+            currentUser.role === 'super_admin' ||
+            (topic?.createdBy && topic.createdBy === currentUser.id)
+        )
+    );
+
+    useEffect(() => {
+        if (!canManageTopic && activeTab === 'generate') {
+            setActiveTab('lessons');
+        }
+    }, [activeTab, canManageTopic]);
 
     const clampNumber = (value, min, max) => {
         const parsed = Number(value);
@@ -430,16 +446,18 @@ export default function TopicDetailPage() {
                         >
                             Lessons
                         </button>
-                        <button
-                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                                activeTab === 'generate'
-                                    ? 'bg-primary-500 text-white shadow'
-                                    : 'text-foreground-secondary hover:text-foreground'
-                            }`}
-                            onClick={() => setActiveTab('generate')}
-                        >
-                            Generate Content
-                        </button>
+                        {canManageTopic && (
+                            <button
+                                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                                    activeTab === 'generate'
+                                        ? 'bg-primary-500 text-white shadow'
+                                        : 'text-foreground-secondary hover:text-foreground'
+                                }`}
+                                onClick={() => setActiveTab('generate')}
+                            >
+                                Generate Content
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -580,7 +598,7 @@ export default function TopicDetailPage() {
                     )
                 )}
 
-                {activeTab === 'generate' && (
+                {activeTab === 'generate' && canManageTopic && (
                     <div className="space-y-6">
                         <Card variant="glass" className="p-6">
                             <CardHeader className="p-0 mb-4">

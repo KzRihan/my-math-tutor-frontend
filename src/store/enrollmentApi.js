@@ -80,10 +80,7 @@ export const enrollmentApi = createApi({
                     timeSpent,
                 },
             }),
-            invalidatesTags: (result, error, { enrollmentId }) => [
-                { type: 'Enrollment', id: enrollmentId },
-                'Progress',
-            ],
+            invalidatesTags: ['Enrollment', 'Progress'],
         }),
 
         /**
