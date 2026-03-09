@@ -39,6 +39,7 @@ export default function GenerateContentPage() {
     exercisesCount: 4,
     quizCount: 5,
     generateImages: true,
+    generateVideos: false,
   });
   const [progressSteps, setProgressSteps] = useState([]);
   const [createdTopic, setCreatedTopic] = useState(null);
@@ -146,6 +147,7 @@ export default function GenerateContentPage() {
             exercisesCount: formData.exercisesCount,
             quizCount: formData.quizCount,
             generateImages: formData.generateImages,
+            generateVideos: formData.generateVideos,
           }).unwrap();
 
           const lessonContent = contentResult?.data?.lesson || contentResult?.lesson;
@@ -303,6 +305,21 @@ export default function GenerateContentPage() {
               />
               <label htmlFor="generate-images" className="text-sm font-medium text-foreground">
                 Generate images
+              </label>
+            </div>
+            <div className="flex items-center gap-3 pt-6">
+              <input
+                id="generate-videos"
+                type="checkbox"
+                className="h-4 w-4 accent-primary-500"
+                checked={formData.generateVideos}
+                onChange={(event) => setFormData((prev) => ({
+                  ...prev,
+                  generateVideos: event.target.checked,
+                }))}
+              />
+              <label htmlFor="generate-videos" className="text-sm font-medium text-foreground">
+                Generate video
               </label>
             </div>
           </div>

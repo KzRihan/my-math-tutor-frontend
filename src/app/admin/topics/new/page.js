@@ -43,6 +43,7 @@ export default function NewTopicPage() {
         exercisesPerLesson: 4,
         quizQuestions: 5, // AI service limit is 5
         generateImages: true,
+        generateVideos: false,
         includeLatex: true,
     });
 
@@ -212,6 +213,7 @@ export default function NewTopicPage() {
                         exercisesCount: aiSettings.exercisesPerLesson,
                         quizCount: aiSettings.quizQuestions,
                         generateImages: aiSettings.generateImages,
+                        generateVideos: aiSettings.generateVideos,
                     }).unwrap();
 
                     // Save lesson content
@@ -785,6 +787,15 @@ export default function NewTopicPage() {
                                 />
                                 <span className="text-sm text-foreground">Include LaTeX math expressions</span>
                             </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={aiSettings.generateVideos}
+                                    onChange={(e) => setAiSettings(prev => ({ ...prev, generateVideos: e.target.checked }))}
+                                    className="w-4 h-4 rounded border-neutral-300 text-primary-500 focus:ring-primary-500"
+                                />
+                                <span className="text-sm text-foreground">Generate video explanations</span>
+                            </label>
                         </div>
 
                         {/* Estimated Output */}
@@ -792,6 +803,7 @@ export default function NewTopicPage() {
                             <p className="text-xs text-foreground-secondary">
                                 <span className="font-medium text-foreground">Estimated output:</span> {aiSettings.lessonsCount} lessons, {aiSettings.lessonsCount * aiSettings.exercisesPerLesson} exercises, {aiSettings.quizQuestions} quiz questions
                                 {aiSettings.generateImages && `, ~${aiSettings.lessonsCount * 2} images`}
+                                {aiSettings.generateVideos && `, up to ${aiSettings.lessonsCount} videos`}
                             </p>
                         </div>
                     </div>

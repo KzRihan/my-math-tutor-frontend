@@ -69,6 +69,7 @@ export const adminApi = createApi({
                     exercises_count: data.exercisesCount,
                     quiz_count: data.quizCount,
                     generate_images: data.generateImages,
+                    generate_videos: data.generateVideos,
                 },
             }),
             invalidatesTags: ['Lesson'],
@@ -119,6 +120,18 @@ export const adminApi = createApi({
         }),
 
         /**
+         * Delete a topic
+         * DELETE /admin/topics/:id
+         */
+        deleteTopic: builder.mutation({
+            query: (id) => ({
+                url: `/admin/topics/${id}`,
+                method: 'DELETE',
+            }),
+            invalidatesTags: (result, error, id) => [{ type: 'Topic', id }, 'Topic', 'Lesson'],
+        }),
+
+        /**
          * Save generated lessons to topic
          * POST /admin/topics/:id/lessons
          */
@@ -140,6 +153,21 @@ export const adminApi = createApi({
                 url: `/admin/topics/${topicId}/lessons/${lessonId}/content`,
                 method: 'POST',
                 body: content,
+            }),
+            invalidatesTags: (result, error, { topicId, lessonId }) => [
+                { type: 'Topic', id: topicId },
+                { type: 'Lesson', id: lessonId },
+            ],
+        }),
+
+        /**
+         * Delete lesson from topic
+         * DELETE /admin/topics/:topicId/lessons/:lessonId
+         */
+        deleteLesson: builder.mutation({
+            query: ({ topicId, lessonId }) => ({
+                url: `/admin/topics/${topicId}/lessons/${lessonId}`,
+                method: 'DELETE',
             }),
             invalidatesTags: (result, error, { topicId, lessonId }) => [
                 { type: 'Topic', id: topicId },
@@ -347,8 +375,10 @@ export const {
     useGetTopicsQuery,
     useGetTopicQuery,
     useUpdateTopicMutation,
+    useDeleteTopicMutation,
     useSaveLessonsMutation,
     useSaveLessonContentMutation,
+    useDeleteLessonMutation,
     usePublishTopicMutation,
     useUnpublishTopicMutation,
     useGetPendingQuizResponsesQuery,

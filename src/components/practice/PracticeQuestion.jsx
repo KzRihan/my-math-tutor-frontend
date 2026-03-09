@@ -154,6 +154,17 @@ export default function PracticeQuestion({
   };
 
   const isCorrect = result?.isCorrect || false;
+  const mediaImageUrl = exercise?.diagram_url || exercise?.image_url || exercise?.diagramUrl || exercise?.imageUrl || '';
+  const mediaImageBase64Raw =
+    exercise?.diagram_base64 ||
+    exercise?.image_base64 ||
+    exercise?.diagramBase64 ||
+    exercise?.imageBase64 ||
+    '';
+  const mediaVideoUrl = exercise?.video_url || exercise?.videoUrl || '';
+  const mediaImageSrc = mediaImageBase64Raw
+    ? (mediaImageBase64Raw.startsWith('data:image') ? mediaImageBase64Raw : `data:image/png;base64,${mediaImageBase64Raw}`)
+    : mediaImageUrl;
 
   return (
     <div className="p-6 rounded-2xl bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 transition-all">
@@ -164,6 +175,23 @@ export default function PracticeQuestion({
 
         <div className="flex-1 space-y-4">
           <div className="text-lg font-medium">{exercise.exercise || exercise.question || ''}</div>
+
+          {mediaImageSrc ? (
+            <img
+              src={mediaImageSrc}
+              alt="Generated lesson visual"
+              className="w-full max-w-lg rounded-xl border border-neutral-200 dark:border-neutral-700"
+            />
+          ) : null}
+
+          {mediaVideoUrl ? (
+            <video
+              src={mediaVideoUrl}
+              controls
+              preload="metadata"
+              className="w-full max-w-lg rounded-xl border border-neutral-200 dark:border-neutral-700"
+            />
+          ) : null}
 
           <div className="flex flex-col sm:flex-row gap-3">
             <input

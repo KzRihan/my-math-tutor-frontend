@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Card, { CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -17,7 +17,9 @@ import {
     useGenerateLessonsMutation,
     useSaveLessonsMutation,
     useGenerateLessonContentMutation,
-    useSaveLessonContentMutation
+    useSaveLessonContentMutation,
+    useDeleteTopicMutation,
+    useDeleteLessonMutation
 } from '@/store/adminApi';
 import { formatDuration } from '@/lib/utils';
 import { useToast } from '@/components/providers/ToastProvider';
@@ -41,6 +43,7 @@ import { useSelector } from 'react-redux';
 
 export default function TopicDetailPage() {
     const params = useParams();
+    const router = useRouter();
     const searchParams = useSearchParams();
     const toast = useToast();
     const [showEnrollmentModal, setShowEnrollmentModal] = useState(false);
@@ -51,6 +54,7 @@ export default function TopicDetailPage() {
         exercisesCount: 4,
         quizCount: 5,
         generateImages: true,
+        generateVideos: false,
     });
     const [generatingLessonId, setGeneratingLessonId] = useState(null);
     const [newLessonsCount, setNewLessonsCount] = useState(3);
@@ -66,6 +70,8 @@ export default function TopicDetailPage() {
     const [saveLessons] = useSaveLessonsMutation();
     const [generateLessonContent] = useGenerateLessonContentMutation();
     const [saveLessonContent] = useSaveLessonContentMutation();
+    const [deleteTopic, { isLoading: isDeletingTopic }] = useDeleteTopicMutation();
+    const [deleteLesson] = useDeleteLessonMutation();
     const currentUser = useSelector((state) => state.auth.user);
     
     const topic = topicData?.data;
@@ -119,6 +125,7 @@ export default function TopicDetailPage() {
                 exercisesCount: contentSettings.exercisesCount,
                 quizCount: contentSettings.quizCount,
                 generateImages: contentSettings.generateImages,
+                generateVideos: contentSettings.generateVideos,
             }).unwrap();
 
             const lessonContent = generatedResult?.data?.lesson || generatedResult?.lesson;
@@ -202,6 +209,69 @@ export default function TopicDetailPage() {
             toast.error(errorMessage);
         } finally {
             setIsGeneratingLessons(false);
+        }
+    };
+
+    const handleDeleteTopic = async () => {
+        if (!topic) {
+            toast.error('Topic data is not available. Please try again.');
+            return;
+        }
+
+        const topicId = topic.id || topic._id;
+        if (!topicId) {
+            toast.error('Missing topic ID. Please refresh and try again.');
+            return;
+        }
+
+        const confirmed = window.confirm(`Delete topic "${topic.title}" and all of its lessons? This cannot be undone.`);
+        if (!confirmed) {
+            return;
+        }
+
+        try {
+            await deleteTopic(topicId).unwrap();
+            toast.success('Topic deleted successfully');
+            router.push('/topics');
+        } catch (error) {
+            const errorMessage = error?.data?.error?.message
+                || error?.data?.message
+                || error?.error
+                || error?.message
+                || 'Failed to delete topic. Please try again.';
+            toast.error(errorMessage);
+        }
+    };
+
+    const handleDeleteLesson = async (lesson) => {
+        if (!topic || !lesson) {
+            toast.error('Topic or lesson data is not available. Please refresh and try again.');
+            return;
+        }
+
+        const topicId = topic.id || topic._id;
+        const lessonId = lesson._id?.toString() || lesson.id?.toString();
+        if (!topicId || !lessonId) {
+            toast.error('Missing topic or lesson ID. Please refresh and try again.');
+            return;
+        }
+
+        const confirmed = window.confirm(`Delete lesson "${lesson.title}"? This cannot be undone.`);
+        if (!confirmed) {
+            return;
+        }
+
+        try {
+            await deleteLesson({ topicId, lessonId }).unwrap();
+            toast.success('Lesson deleted successfully');
+            refetchTopic();
+        } catch (error) {
+            const errorMessage = error?.data?.error?.message
+                || error?.data?.message
+                || error?.error
+                || error?.message
+                || 'Failed to delete lesson. Please try again.';
+            toast.error(errorMessage);
         }
     };
 
@@ -600,6 +670,28 @@ export default function TopicDetailPage() {
 
                 {activeTab === 'generate' && canManageTopic && (
                     <div className="space-y-6">
+                        <Card variant="glass" className="p-6 border border-error/20">
+                            <CardHeader className="p-0 mb-4">
+                                <CardTitle className="flex items-center gap-2 text-error">
+                                    Danger Zone
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-0 space-y-3">
+                                <p className="text-sm text-foreground-secondary">
+                                    Deleting a topic will permanently remove all lessons and generated content.
+                                </p>
+                                <Button
+                                    variant="danger"
+                                    onClick={handleDeleteTopic}
+                                    loading={isDeletingTopic}
+                                    disabled={isDeletingTopic}
+                                    className="font-bold"
+                                >
+                                    {isDeletingTopic ? 'Deleting Topic...' : 'Delete Topic'}
+                                </Button>
+                            </CardContent>
+                        </Card>
+
                         <Card variant="glass" className="p-6">
                             <CardHeader className="p-0 mb-4">
                                 <CardTitle className="flex items-center gap-2">
@@ -680,6 +772,20 @@ export default function TopicDetailPage() {
                                             Generate images
                                         </label>
                                     </div>
+                                    <div className="flex items-center gap-3 pt-6">
+                                        <input
+                                            id="generate-videos-toggle"
+                                            type="checkbox"
+                                            className="h-4 w-4 accent-primary-500"
+                                            checked={contentSettings.generateVideos}
+                                            onChange={(event) => {
+                                                setContentSettings((prev) => ({ ...prev, generateVideos: event.target.checked }));
+                                            }}
+                                        />
+                                        <label htmlFor="generate-videos-toggle" className="text-sm font-medium text-foreground">
+                                            Generate video
+                                        </label>
+                                    </div>
                                 </div>
                                 <p className="text-xs text-foreground-secondary mt-4">
                                     Limits: 1-5 exercises, 1-5 quiz questions per lesson.
@@ -716,10 +822,19 @@ export default function TopicDetailPage() {
                                                             variant={hasContent ? 'secondary' : 'primary'}
                                                             className="font-bold"
                                                             loading={isGenerating}
-                                                            disabled={isGenerating || isBusy}
+                                                            disabled={isGenerating || isBusy || isDeletingTopic}
                                                             onClick={() => handleGenerateContent(lesson)}
                                                         >
                                                             {hasContent ? 'Regenerate' : 'Generate'}
+                                                        </Button>
+                                                        <Button
+                                                            variant="danger"
+                                                            size="sm"
+                                                            className="font-bold"
+                                                            disabled={isGenerating || isBusy || isDeletingTopic}
+                                                            onClick={() => handleDeleteLesson(lesson)}
+                                                        >
+                                                            Delete
                                                         </Button>
                                                     </div>
                                                 </CardContent>

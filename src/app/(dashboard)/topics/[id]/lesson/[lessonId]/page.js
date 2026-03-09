@@ -480,6 +480,7 @@ export default function LessonPage() {
     // Extract content from lesson
     const introduction = lessonContent?.introduction || '';
     const explanation = lessonContent?.explanation || '';
+    const lessonVideoUrl = lessonContent?.video_url || lessonContent?.videoUrl || '';
     const workedExamples = lessonContent?.worked_examples || [];
     const practiceExercises = lessonContent?.practice_exercises || [];
     const quiz = lessonContent?.quiz || [];
@@ -579,6 +580,14 @@ export default function LessonPage() {
                                         <p className="text-foreground-secondary text-lg leading-relaxed">
                                             {explanation}
                                         </p>
+                                        {lessonVideoUrl ? (
+                                            <video
+                                                src={lessonVideoUrl}
+                                                controls
+                                                preload="metadata"
+                                                className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700"
+                                            />
+                                        ) : null}
                                     </div>
                                 ) : (
                                     <div className="text-center py-8">
@@ -635,6 +644,29 @@ export default function LessonPage() {
                                                                 ))}
                                                             </ol>
                                                         )}
+                                                        {(example.diagram_base64 || example.image_base64 || example.diagram_url || example.image_url) ? (
+                                                            <img
+                                                                src={
+                                                                    example.diagram_base64 || example.image_base64
+                                                                        ? (
+                                                                            (example.diagram_base64 || example.image_base64).startsWith('data:image')
+                                                                                ? (example.diagram_base64 || example.image_base64)
+                                                                                : `data:image/png;base64,${example.diagram_base64 || example.image_base64}`
+                                                                        )
+                                                                        : (example.diagram_url || example.image_url)
+                                                                }
+                                                                alt="Worked example visual"
+                                                                className="mt-4 w-full max-w-lg rounded-xl border border-neutral-200 dark:border-neutral-700"
+                                                            />
+                                                        ) : null}
+                                                        {(example.video_url || example.videoUrl) ? (
+                                                            <video
+                                                                src={example.video_url || example.videoUrl}
+                                                                controls
+                                                                preload="metadata"
+                                                                className="mt-4 w-full max-w-lg rounded-xl border border-neutral-200 dark:border-neutral-700"
+                                                            />
+                                                        ) : null}
                                                     </div>
                                                 </div>
                                             </div>

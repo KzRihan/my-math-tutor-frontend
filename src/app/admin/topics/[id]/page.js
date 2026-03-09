@@ -11,7 +11,9 @@ import {
     useSaveLessonsMutation,
     useGetTopicQuery,
     usePublishTopicMutation,
-    useUnpublishTopicMutation
+    useUnpublishTopicMutation,
+    useDeleteTopicMutation,
+    useDeleteLessonMutation
 } from '@/store/adminApi';
 import { useToast } from '@/components/providers/ToastProvider';
 import { FaClipboardList, FaBook, FaQuestionCircle, FaEdit, FaRobot, FaEye, FaRocket, FaSave, FaPlus, FaTrash, FaSpinner } from 'react-icons/fa';
@@ -34,6 +36,7 @@ export default function TopicEditorPage() {
     // State for customizable content generation settings per lesson
     const [lessonSettings, setLessonSettings] = useState({});
     const [generateImages, setGenerateImages] = useState(true);
+    const [generateVideos, setGenerateVideos] = useState(false);
 
     // RTK Query hooks
     const { data: topicResponse, isLoading: isLoadingTopic, error: topicError } = useGetTopicQuery(topicId);
@@ -42,6 +45,8 @@ export default function TopicEditorPage() {
     const [saveLessons, { isLoading: isSavingLessons }] = useSaveLessonsMutation();
     const [publishTopic, { isLoading: isPublishing }] = usePublishTopicMutation();
     const [unpublishTopic, { isLoading: isUnpublishing }] = useUnpublishTopicMutation();
+    const [deleteTopic, { isLoading: isDeletingTopic }] = useDeleteTopicMutation();
+    const [deleteLesson] = useDeleteLessonMutation();
     const toast = useToast();
 
     // Extract topic data from API response
@@ -57,7 +62,10 @@ export default function TopicEditorPage() {
                 question: ex.question || ex.exercise || 'Practice exercise',
                 answer: ex.answer || ex.solution || '',
                 diagramBase64: ex.diagram_base64 || '',
+                imageBase64: ex.image_base64 || '',
                 diagramUrl: ex.diagram_url || '',
+                imageUrl: ex.image_url || '',
+                videoUrl: ex.video_url || '',
                 difficulty: topic?.difficulty || 'medium',
                 type: 'practice',
             }));
@@ -123,6 +131,45 @@ export default function TopicEditorPage() {
         }
     };
 
+    const handleDeleteTopic = async () => {
+        const confirmed = window.confirm(`Delete topic "${topic?.title}" and all lessons? This cannot be undone.`);
+        if (!confirmed) {
+            return;
+        }
+
+        try {
+            await deleteTopic(topicId).unwrap();
+            toast.success('Topic deleted successfully');
+            window.location.href = '/admin/topics';
+        } catch (error) {
+            const errorMsg =
+                error?.data?.error?.message ||
+                error?.data?.message ||
+                error?.message ||
+                'Failed to delete topic';
+            toast.error(errorMsg);
+        }
+    };
+
+    const handleDeleteLesson = async (lessonId, lessonTitle) => {
+        const confirmed = window.confirm(`Delete lesson "${lessonTitle}"? This cannot be undone.`);
+        if (!confirmed) {
+            return;
+        }
+
+        try {
+            await deleteLesson({ topicId, lessonId }).unwrap();
+            toast.success('Lesson deleted successfully');
+        } catch (error) {
+            const errorMsg =
+                error?.data?.error?.message ||
+                error?.data?.message ||
+                error?.message ||
+                'Failed to delete lesson';
+            toast.error(errorMsg);
+        }
+    };
+
     // Generate content for a specific lesson (INDEPENDENT - doesn't affect other lessons)
     const handleGenerateLessonContent = async (lessonTitle, lessonId, customSettings = {}) => {
         if (!topic || !lessonTitle || !lessonId) {
@@ -147,6 +194,7 @@ export default function TopicEditorPage() {
             const exercisesCount = customSettings.exercisesCount || 4;
             const quizCount = customSettings.quizCount || 5;
             const imagesEnabled = customSettings.generateImages ?? generateImages;
+            const videosEnabled = customSettings.generateVideos ?? generateVideos;
 
             // Step 1: Generate lesson content
             setGenerationStep(1);
@@ -158,6 +206,7 @@ export default function TopicEditorPage() {
                 exercisesCount: exercisesCount,
                 quizCount: quizCount,
                 generateImages: imagesEnabled,
+                generateVideos: videosEnabled,
             }).unwrap();
 
             // Step 2: Save lesson content
@@ -310,6 +359,23 @@ export default function TopicEditorPage() {
                         <FaEye />
                         Preview
                     </Link>
+                    <button
+                        className="btn btn-secondary text-error"
+                        onClick={handleDeleteTopic}
+                        disabled={isDeletingTopic}
+                    >
+                        {isDeletingTopic ? (
+                            <>
+                                <FaSpinner className="animate-spin" />
+                                Deleting...
+                            </>
+                        ) : (
+                            <>
+                                <FaTrash />
+                                Delete Topic
+                            </>
+                        )}
+                    </button>
                     {topic.status === 'published' ? (
                         <button 
                             className="btn btn-secondary"
@@ -607,7 +673,10 @@ export default function TopicEditorPage() {
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                             </svg>
                                         </Link>
-                                        <button className="p-2 rounded-lg hover:bg-error/10 text-foreground-secondary hover:text-error transition-colors">
+                                        <button
+                                            className="p-2 rounded-lg hover:bg-error/10 text-foreground-secondary hover:text-error transition-colors"
+                                            onClick={() => handleDeleteLesson(lessonId, lesson.title)}
+                                        >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                             </svg>
@@ -669,17 +738,25 @@ export default function TopicEditorPage() {
                                             {ex.answer ? (
                                                 <p className="mt-2"><span className="font-medium text-foreground">Answer:</span> {ex.answer}</p>
                                             ) : null}
-                                            {ex.diagramUrl ? (
+                                            {ex.diagramUrl || ex.imageUrl ? (
                                                 <img
-                                                    src={ex.diagramUrl}
+                                                    src={ex.diagramUrl || ex.imageUrl}
                                                     alt="Exercise diagram"
                                                     className="mt-3 w-full max-w-md rounded-xl border border-[var(--card-border)]"
                                                 />
-                                            ) : ex.diagramBase64 ? (
+                                            ) : ex.diagramBase64 || ex.imageBase64 ? (
                                                 <img
-                                                    src={`data:image/png;base64,${ex.diagramBase64}`}
+                                                    src={`data:image/png;base64,${ex.diagramBase64 || ex.imageBase64}`}
                                                     alt="Exercise diagram"
                                                     className="mt-3 w-full max-w-md rounded-xl border border-[var(--card-border)]"
+                                                />
+                                            ) : null}
+                                            {ex.videoUrl ? (
+                                                <video
+                                                    className="mt-3 w-full max-w-md rounded-xl border border-[var(--card-border)]"
+                                                    src={ex.videoUrl}
+                                                    controls
+                                                    preload="metadata"
                                                 />
                                             ) : null}
                                         </div>
@@ -811,7 +888,12 @@ export default function TopicEditorPage() {
                                     <span className="text-sm">Include LaTeX math expressions</span>
                                 </label>
                                 <label className="flex items-center gap-3 cursor-pointer">
-                                    <input type="checkbox" className="w-5 h-5 rounded border-neutral-300" />
+                                    <input
+                                        type="checkbox"
+                                        checked={generateVideos}
+                                        onChange={(e) => setGenerateVideos(e.target.checked)}
+                                        className="w-5 h-5 rounded border-neutral-300"
+                                    />
                                     <span className="text-sm">Generate video explanations</span>
                                 </label>
                             </div>
